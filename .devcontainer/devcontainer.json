@@ -1,0 +1,19 @@
+{
+  // Codespaces, VS Code and Ona. Other agents bring their own setup and run scripts/setup.py
+  // from it; see AGENTS.md.
+  "name": "icelens",
+  "image": "mcr.microsoft.com/devcontainers/python:3.13",
+  "features": {
+    // For `make live-up`: Lakekeeper and Polaris for the live tests. Everything else runs without it.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "python3 scripts/setup.py",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python"
+      }
+    }
+  }
+}

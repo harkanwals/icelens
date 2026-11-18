@@ -1,0 +1,26 @@
+# GitHub Copilot's cloud agent runs this job before it starts work, so the environment, DuckDB's
+# extensions and the test tools are there when it needs them. Copilot reads AGENTS.md for the rest.
+# The steps are scripts/setup.py, which every agent's setup runs; change that, not this.
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+  pull_request:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+
+jobs:
+  # Copilot looks for a job with exactly this name.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: python3 scripts/setup.py

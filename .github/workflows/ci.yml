@@ -1,0 +1,179 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # A test that needs DuckDB's extensions fails here instead of skipping. Skipping is right on a
+  # laptop with no network; in CI it would mean a runner that could not reach
+  # extensions.duckdb.org quietly stopped testing rows, SQL and every sandbox write.
+  ICELENS_REQUIRE_DUCKDB_EXTENSIONS: "1"
+
+defaults:
+  run:
+    # bash on every runner, Windows included, so each step is written once
+    shell: bash
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked --extra dev
+      - run: uv run ruff check .
+      - run: uv run pyright
+        env:
+          # pyright otherwise asks PyPI whether it is the newest release, on every run
+          PYRIGHT_PYTHON_IGNORE_WARNINGS: "1"
+
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    # Windows has never been run. It is here to find out, and does not block until it has passed
+    # once: `file://` warehouse paths and SQLite URIs are the likeliest things to differ there.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked --extra dev
+      - name: Install DuckDB's extensions
+        # The one network fetch the suite depends on, done here in the open, so the tests
+        # themselves never reach for extensions.duckdb.org.
+        run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run pytest -q
+      - name: Packaging
+        # Build the sdist and the wheel, install the wheel into a fresh venv, run it.
+        # Per platform, because packaging bugs are.
+        env:
+          ICELENS_TEST_PACKAGING: "1"
+        run: uv run pytest -q tests/test_packaging.py
+
+  # The README says the suite needs no network. This is where that is true: no extensions and
+  # nothing to fetch them from, so every test that needs them skips and everything else must pass.
+  # It is also what catches a new test that needs the extensions without being marked so.
+  without-extensions:
+    runs-on: ubuntu-latest
+    env:
+      ICELENS_REQUIRE_DUCKDB_EXTENSIONS: "0"
+      ICELENS_TEST_WITHOUT_DUCKDB_EXTENSIONS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --extra dev
+      - run: uv run pytest -q
+
+  # Lakekeeper and Polaris in Docker, and the suite against them: attach mode, OAuth, vended
+  # credentials and nested namespaces against real servers, not only against icelens's own catalog.
+  # ICELENS_REQUIRE_LIVE_CATALOGS turns "no catalog answered" from a skip into a failure, so a
+  # stack that did not start cannot pass as a stack that did.
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ICELENS_REQUIRE_LIVE_CATALOGS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --extra dev
+      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: make live-up
+      - run: make test-live
+      - name: Server logs
+        if: failure()
+        run: docker compose -f tests/compose/stack.yml logs --no-color --tail 200
+      - if: always()
+        run: make live-down
+
+  # The lowest version of every direct dependency pyproject.toml allows, so its floors are tested
+  # rather than hoped. The lockfile is re-resolved here on purpose and thrown away afterwards.
+  minimums:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.10"
+      - run: uv sync --extra dev --resolution lowest-direct
+      - name: Versions
+        run: uv pip list | grep -Ei '^(duckdb|pyiceberg|textual|pyarrow|pytest) ' | tee -a "$GITHUB_STEP_SUMMARY"
+      - run: uv run --no-sync python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run --no-sync pytest -q
+
+  # The browser build: the wheel the site deploys, under the Pyodide the site loads, in Node. Pyodide
+  # ships PyIceberg and DuckDB below the floors the jobs above test, so this is the only job that
+  # runs icelens on the versions a visitor to try.html actually gets.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/pyodide/package-lock.json
+      - run: uv sync --locked --extra dev
+      - run: make test-browser
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --extra dev
+      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run pytest -q --cov --cov-report=term-missing:skip-covered --cov-report=xml
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo '### Coverage (lines and branches, hermetic suite)'
+            echo '```'
+            uv run coverage report --skip-covered
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore

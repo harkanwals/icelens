@@ -1,0 +1,34 @@
+ ⭘                                     icelens — sandbox 'demo'  ·  demo.orders
+╭─ catalog ────────────────────────╮╭─ demo.orders ────────────────────────────────────────────────────────────────────╮
+│  filter tables                   ││napshots  5 Commit  6 Manifests  7 Files  8 Partitions  9 Layout  0 SQL  e Writer │
+│                                  ││━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸━━━━━━━━╺│
+│                                  ││▊▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▎│
+│ ▼ sandbox 'demo'                 ││▊ 1  -- a sandbox: write here, and watch what Iceberg makes of it. ctrl+r        ▎│
+│ └── ▼ demo  (1)                  ││▊    runs it.                                                                    ▎│
+│     └── orders                   ││▊ 2  CREATE TABLE demo.sales AS                                                  ▎│
+│                                  ││▊ 3    SELECT i AS id, 'r' || (i % 4) AS region, i * 1.5 AS amount               ▎│
+│                                  ││▊ 4    FROM range(1, 101) t(i);                                                  ▎│
+│                                  ││▊ 5                                                                              ▎│
+│                                  ││▊ 6  -- then try these, one at a time, and read the ledger below:                ▎│
+│                                  ││▊ 7  --   INSERT INTO demo.sales SELECT i, 'r0', 9.99 FROM range(101, 111)       ▎│
+│                                  ││▊    t(i);                                                                    ▇▇ ▎│
+│                                  ││▊▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▎│
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
+│                                  │╭─ guide ──────────────────────────────────────────────────────────────────────────╮
+│                                  ││ Sandbox  A scratch catalog of this tool's own making, on local files, that you   │
+│                                  ││ are meant to write to.   g for more                                              │
+│                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
+╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
+ ^w Warehouse  / Filter  ^r Run  ^o Catalogs                                                                ▏^p palette

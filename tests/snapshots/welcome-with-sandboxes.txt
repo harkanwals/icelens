@@ -1,0 +1,34 @@
+
+      ╭──────────────────────────────────────────────────────────────────────────────────────╮
+      │                                                                                      │
+      │  icelens - a terminal browser for Apache Iceberg tables                              │
+      │                                                                                      │
+      │  No Iceberg catalog is configured here: nothing in --uri, the ICELENS_* variables,   │
+      │  a .env or ~/.pyiceberg.yaml. You can still be looking at a real Iceberg table in    │
+      │  about a second.                                                                     │
+      │                                                                                      │
+      │   Open sandbox 'demo'                                                                │
+      │   1 table, v2 - yours to write to (press e)                                          │
+      │                                                                                      │
+      │   Open sandbox 'scratch'                                                             │
+      │   0 tables, v3 - yours to write to (press e)                                         │
+      │                                                                                      │
+      │   Make a v3 sandbox with a demo table                                                │
+      │   format-version 3: deletion vectors, row lineage, UPDATE and MERGE, written by      │
+      │   DuckDB through a REST catalog icelens runs itself on 127.0.0.1                     │
+      │                                                                                      │
+      │   Make an empty sandbox                                                              │
+      │   then press e and write to it with SQL                                              │
+      │                                                                                      │
+      │   Connect to a catalog you run                                                       │
+      │   prints how, and exits                                                              │
+      │                                                                                      │
+      │   Quit                                                                               │
+      │                                                                                      │
+      │                                                                                      │
+      │  enter to choose, escape to quit. A sandbox is format-version 2 unless it is made    │
+      │  v3: icelens --sandbox NAME --v3.                                                    │
+      │                                                                                      │
+      ╰──────────────────────────────────────────────────────────────────────────────────────╯
+
+
