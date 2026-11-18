@@ -223,7 +223,7 @@ def test_pyiceberg_reads_what_duckdb_cannot_and_says_so(polaris: Polaris, vendin
         rows, engine = lake.rows("core.items", limit=1000)
         assert rows.num_rows == 90
         assert engine.startswith("pyiceberg (duckdb could not read it:")
-        with pytest.raises(IcelensError, match=r"could not be read for SQL: .*core\.dim"):
+        with pytest.raises(IcelensError, match=r"could not be read for SQL: .*core\.items"):
             lake.query('SELECT count(*) FROM icelens."core"."items"')
     finally:
         lake.close()
