@@ -1,0 +1,144 @@
+# The live catalogs, for tests/test_attach.py and tests/test_polaris.py: Lakekeeper and Apache
+# Polaris, over one RustFS object store.
+#
+#   make live-up       # docker compose -f tests/compose/stack.yml up -d --wait
+#   make test-live     # the whole suite, with tests/compose/live.env pointing it at these
+#   make live-down     # docker compose -f tests/compose/stack.yml down -v
+#
+# Every catalog and the object store share one network namespace (RustFS's), so 127.0.0.1:19000
+# is the object store for the catalogs *and* for DuckDB and PyIceberg on the host. A catalog hands
+# its clients the endpoint it was configured with, so this is what lets one endpoint work on both
+# sides, under Docker Desktop as well as on Linux, without host networking.
+#
+#   18181, 18182   Polaris: Iceberg REST at /api/catalog, management, health
+#   18282          Lakekeeper: Iceberg REST at /catalog, management at /management
+#   19000          RustFS (S3 and STS), buckets `keeper` and `polaris`
+#
+# Ports are offset so this can run beside a lakehouse already on 8181 and 9000. Everything is
+# throwaway: `down -v` deletes it all, and the keys and the Polaris bootstrap secret below are
+# test fixtures, not credentials. RustFS rather than MinIO because RustFS implements STS
+# AssumeRole, which is how both catalogs vend per-table credentials, and its image is on Docker Hub.
+#
+# LAKEKEEPER_IMAGE overrides Lakekeeper's image, for a registry mirror or a local build.
+name: icelens-live
+
+services:
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_ADDRESS: ":19000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+    ports:
+      # The ports of everything that joins this service's network namespace are published here.
+      - "127.0.0.1:18181:18181"
+      - "127.0.0.1:18182:18182"
+      - "127.0.0.1:18282:18282"
+      - "127.0.0.1:19000:19000"
+
+  buckets:
+    image: curlimages/curl:8.11.1
+    network_mode: service:rustfs
+    depends_on: [rustfs]
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        for bucket in keeper polaris; do
+        made=;
+        for i in $$(seq 1 60); do
+        code=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT --aws-sigv4 aws:amz:us-east-1:s3
+        --user rustfsadmin:rustfsadmin http://127.0.0.1:19000/$$bucket);
+        case $$code in 200|409) made=1; break;; esac;
+        sleep 1; done;
+        [ -n "$$made" ] || exit 1;
+        done
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  lakekeeper-migrate:
+    image: ${LAKEKEEPER_IMAGE:-quay.io/lakekeeper/catalog:v0.14.0}
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    environment: &lakekeeper
+      LAKEKEEPER__PG_ENCRYPTION_KEY: icelens-test-fixture-not-a-secret
+      LAKEKEEPER__PG_DATABASE_URL_READ: postgresql://postgres:postgres@postgres:5432/postgres
+      LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://postgres:postgres@postgres:5432/postgres
+      LAKEKEEPER__LISTEN_PORT: "18282"
+      LAKEKEEPER__BASE_URI: http://127.0.0.1:18282
+      # Its default, 9000, is taken in this namespace.
+      LAKEKEEPER__METRICS_PORT: "19292"
+
+  lakekeeper:
+    image: ${LAKEKEEPER_IMAGE:-quay.io/lakekeeper/catalog:v0.14.0}
+    command: ["serve"]
+    network_mode: service:rustfs
+    depends_on:
+      lakekeeper-migrate:
+        condition: service_completed_successfully
+      buckets:
+        condition: service_completed_successfully
+    environment: *lakekeeper
+    healthcheck:
+      test: ["CMD", "/home/nonroot/lakekeeper", "healthcheck"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  lakekeeper-bootstrap:
+    # Lakekeeper serves nothing until it is bootstrapped once; a second time is refused, harmlessly.
+    image: curlimages/curl:8.11.1
+    network_mode: service:rustfs
+    depends_on:
+      lakekeeper:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        code=$$(curl -s -o /tmp/out -w '%{http_code}' -X POST -H 'Content-Type: application/json'
+        -d '{"accept-terms-of-use": true}' http://127.0.0.1:18282/management/v1/bootstrap);
+        case $$code in 2*) exit 0;; esac;
+        grep -q AlreadyBootstrapped /tmp/out && exit 0;
+        cat /tmp/out; exit 1
+
+  polaris:
+    image: apache/polaris:1.8.0
+    network_mode: service:rustfs
+    depends_on:
+      buckets:
+        condition: service_completed_successfully
+      # Not a real dependency: `up --wait` fails on a one-shot container that exits, even
+      # cleanly, unless another service waits for it. This is the service that waits.
+      lakekeeper-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      QUARKUS_HTTP_PORT: "18181"
+      QUARKUS_MANAGEMENT_PORT: "18182"
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      POLARIS_REALM_CONTEXT_REALMS: POLARIS
+      POLARIS_PERSISTENCE_TYPE: in-memory
+      POLARIS_READINESS_IGNORE_SEVERE_ISSUES: "true"
+      # What Polaris calls STS with, to mint the per-table credentials it vends.
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+      AWS_REGION: us-east-1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:18182/q/health/ready || exit 1"]
+      interval: 2s
+      timeout: 2s
+      retries: 60

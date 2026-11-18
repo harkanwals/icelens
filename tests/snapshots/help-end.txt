@@ -1,0 +1,40 @@
+ ⭘                                     icelens — sandbox 'demo'  ·  demo.orders
+╭─ catalog ────────────────────────╮╭─ demo.orders ────────────────────────────────────────────────────────────────────╮
+│  filte╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮ 8 Part│
+│       │                                                                                                      │━━━━━━━│
+│       │  Rows                                                                                                │       │
+│ ▼ sand│    [ ]          halve / double the row limit   w        filter rows (SQL WHERE, Data pane)           │       │
+│ └── ▼ │    x            export the focused grid to CSV c        copy the focused cell                        │       │
+│     └─│    0            SQL over the whole catalog     ctrl+r   run the query                                │       │
+│       │    l            row lineage: _row_id and _last_updated_sequence_number beside the rows.              │       │
+│       │                 v3 only, and no engine shows them unless you name them.                              │       │
+│       │                                                                                                      │       │
+│       │  The guide                                                                                           │       │
+│       │    g            the rail at the bottom: a line → the full entry → off                                │       │
+│       │    It explains whatever the cursor is on and changes as you move: the pane, the column,              │       │
+│       │    the row, or the value in the cell. `icelens --explain <term>` is the same corpus.             ▄▄  │       │
+│       │                                                                                                      │       │
+│       │  Reading the panes                                                                                   │       │
+│       │    Overview   what metadata.json says about the table                                                │       │
+│       │    Schema     the schema of the viewed snapshot; ids, not names, are the identity                    │       │
+│       │    Data       rows, through DuckDB when it can attach, PyIceberg otherwise                           │       │
+│       │    Snapshots  every commit: ◆ current, │ ancestor, ~ off the current chain                           │       │
+│       │    Commit     what one snapshot changed - the files it added and retired                             │       │
+│       │    Manifests  the manifest list the snapshot points at                                               │       │
+│       │    Files      every live file at that snapshot, data and deletes                                     │       │
+│       │    Layout     the pointer chain: metadata → snapshot → manifest list → manifests → files             │       │
+│       │    Writer     sandbox only: write statements, and a ledger of what each one committed                │       │
+│       │                                                                                                      │       │
+│       │  Writing (sandbox only)                                                                              │       │
+│       │    e            the Writer pane                 ctrl+r    commit what you typed                      │       │
+│       │    escape       leave the editor, then 1 … 9 to read what the write did                              │       │
+│       │    A sandbox is the only thing icelens will write to. Everywhere else it reads.                      │       │
+│       │    `--sandbox` makes a local v2 catalog of its own. `--sandbox --rest` puts one in a                 │       │
+│       │    namespace of a catalog you run, where DuckDB writes v3: deletion vectors, row                     │       │
+│       │    lineage, UPDATE and MERGE - and where it can write in that namespace and no other.                │───────╯
+│       │                                                                                                      │───────╮
+│       │  escape to close, ↑ ↓ to scroll                                                                      │       │
+│       │                                                                                                      │       │
+│       ╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯───────╯
+╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
+ q Quit  ? Help  / Filter  r Reload  u Now  x Export  c Copy  w Where  g Guide  l Row ids  ^r Run  ^o Catalo▏^p palette

@@ -1,0 +1,155 @@
+/* Dark by default, because that is what a terminal already is. Colour is used for exactly
+   three things: the selected row, a note that is an error, and the time-travel warning. */
+
+Screen {
+    layers: base overlay;
+}
+
+#body {
+    height: 1fr;
+}
+
+/* Each panel in a rounded border with its name in it, so the screen reads as three things -
+   the catalog, the table, the guide - and the one with focus is the one whose border is lit. */
+#sidebar, #tabs, #guide {
+    border: round $primary 60%;
+    border-title-color: $text-muted;
+    border-title-style: bold;
+}
+
+#sidebar:focus-within, #tabs:focus-within {
+    border: round $primary;
+    border-title-color: $primary;
+}
+
+#sidebar {
+    width: 36;
+    min-width: 22;
+}
+
+#filter {
+    border: none;
+    height: 3;
+    background: $boost;
+}
+
+#nav {
+    height: 1fr;
+    padding: 0 1;
+    /* long table names are common and cutting them off makes two tables look identical */
+    overflow-x: auto;
+}
+
+#content {
+    width: 1fr;
+}
+
+/* Narrow: the catalog on top, the table under it, each the full width. The catalog takes a
+   third of the height, enough for a namespace and its tables; the table gets the rest. */
+Screen.-narrow #body {
+    layout: vertical;
+}
+
+Screen.-narrow #sidebar {
+    width: 100%;
+    height: 35%;
+    min-height: 5;
+    max-height: 12;
+}
+
+Screen.-narrow #filter {
+    height: 1;
+}
+
+Screen.-narrow #content {
+    width: 100%;
+    height: 1fr;
+}
+
+#tabs {
+    height: 1fr;
+}
+
+.note {
+    height: auto;
+    padding: 0 1;
+    color: $text-muted;
+    background: $boost;
+}
+
+.note.error {
+    color: $error;
+    text-style: bold;
+}
+
+#status {
+    height: 1;
+    padding: 0 1;
+    background: $panel;
+    color: $text-muted;
+}
+
+#where, #sql {
+    border: none;
+    background: $boost;
+}
+
+#sql {
+    height: 8;
+}
+
+DataTable {
+    height: 1fr;
+}
+
+#help {
+    /* the widest line of the text, plus padding, border and scrollbar; narrower terminals wrap */
+    width: 104;
+    max-width: 100%;
+    height: 90%;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#help-body {
+    height: 1fr;
+}
+
+#picker {
+    width: 60;
+    height: auto;
+    max-height: 80%;
+    padding: 1 2;
+    border: round $accent;
+    background: $surface;
+}
+
+#picker .title {
+    padding-bottom: 1;
+}
+
+Help, WarehousePicker {
+    align: center middle;
+}
+
+.dim {
+    color: $text-muted;
+}
+
+/* The guide rail. It sits between the grid and the status bar and is on by default: the
+   vocabulary is part of reading the table, not a thing you go and open. `deep` is the
+   expanded entry, which is why it is the one state allowed to take real height. */
+#guide {
+    height: auto;
+    padding: 0 1;
+    background: $boost;
+    color: $text-muted;
+}
+
+#guide.deep {
+    max-height: 10;
+    padding: 1;
+    overflow-y: auto;
+    color: $text;
+}

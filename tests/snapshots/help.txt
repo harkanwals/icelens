@@ -1,0 +1,40 @@
+ ⭘                                     icelens — sandbox 'demo'  ·  demo.orders
+╭─ catalog ────────────────────────╮╭─ demo.orders ────────────────────────────────────────────────────────────────────╮
+│  filte╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮ 8 Part│
+│       │                                                                                                      │━━━━━━━│
+│       │  Moving around                                                                                       │       │
+│ ▼ sand│    ↑ ↓ ← →      the tree and the grids        enter     open a table / pin a snapshot                │       │
+│ └── ▼ │    1 … 9 0      jump to a pane                tab       next pane                                    │       │
+│     └─│    /            filter the tree               ctrl+p    fuzzy-find any table                         │       │
+│       │    escape       back to the tree              r         reload the selected table                    │       │
+│       │    ctrl+o       switch catalog (~/.pyiceberg.yaml)   ctrl+w   switch warehouse                       │       │
+│       │                                                                                                      │       │
+│       │  Snapshots                                                                                           │       │
+│       │    enter        view the whole table as of the snapshot in the cell under the cursor                 │       │
+│       │    , .          step to the older / newer snapshot, in Snapshots-pane order                          │       │
+│       │    u            back to the current snapshot                                                         │       │
+│       │    enter works on any cell naming a snapshot: `snapshot id` or `parent` on Snapshots, and            │       │
+│       │    `added by` on Manifests and Files - so enter on a file shows the table as the commit that         │       │
+│       │    wrote it left it. Every pane follows the pinned snapshot: Schema shows the schema it was          │       │
+│       │    written with, Files and Layout show what existed then, Data reads the rows as of then.            │       │
+│       │                                                                                                      │       │
+│       │  Rows                                                                                                │       │
+│       │    [ ]          halve / double the row limit   w        filter rows (SQL WHERE, Data pane)           │       │
+│       │    x            export the focused grid to CSV c        copy the focused cell                        │       │
+│       │    0            SQL over the whole catalog     ctrl+r   run the query                                │       │
+│       │    l            row lineage: _row_id and _last_updated_sequence_number beside the rows.          ▄▄  │       │
+│       │                 v3 only, and no engine shows them unless you name them.                              │       │
+│       │                                                                                                      │       │
+│       │  The guide                                                                                           │       │
+│       │    g            the rail at the bottom: a line → the full entry → off                                │       │
+│       │    It explains whatever the cursor is on and changes as you move: the pane, the column,              │       │
+│       │    the row, or the value in the cell. `icelens --explain <term>` is the same corpus.                 │       │
+│       │                                                                                                      │       │
+│       │  Reading the panes                                                                                   │       │
+│       │    Overview   what metadata.json says about the table                                                │───────╯
+│       │    Schema     the schema of the viewed snapshot; ids, not names, are the identity                    │───────╮
+│       │  escape to close, ↑ ↓ to scroll                                                                      │       │
+│       │                                                                                                      │       │
+│       ╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯───────╯
+╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
+ q Quit  ? Help  / Filter  r Reload  u Now  x Export  c Copy  w Where  g Guide  l Row ids  ^r Run  ^o Catalo▏^p palette

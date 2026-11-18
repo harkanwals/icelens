@@ -1,0 +1,70 @@
+name: canary
+
+# What the next releases of icelens's dependencies will do to it, found before a user finds it.
+# On demand, never on a pull request and never blocking one. It was weekly; it is off the schedule
+# until icelens runs on DuckDB 2.0, which it already reports, so a weekly red would say nothing new. A red job here is news
+# about an upstream change: its name says which upgrade, and the Versions step says exactly what
+# was installed. The fix is either a change here or an upper pin in pyproject.toml, with a reason.
+#
+# DuckDB's pre-releases are where its next major version shows up first (2.0 is due in October
+# 2026); its iceberg extension is the dependency most likely to change under icelens.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  canary:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: duckdb pre-release
+            upgrade: uv pip install --upgrade --pre duckdb
+          - name: pyiceberg main
+            upgrade: uv pip install --upgrade "pyiceberg[pyarrow,sql-sqlite] @ git+https://github.com/apache/iceberg-python@main"
+          - name: newest releases, past the pins
+            upgrade: uv pip install --upgrade textual "pyiceberg[pyarrow,sql-sqlite]" duckdb pyarrow
+    env:
+      ICELENS_REQUIRE_DUCKDB_EXTENSIONS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --extra dev
+      # Installed over the locked environment, past the pins in pyproject.toml on purpose.
+      - run: ${{ matrix.upgrade }}
+      - name: Versions
+        run: |
+          {
+            echo "### ${{ matrix.name }}"
+            echo '```'
+            uv pip list | grep -Ei '^(duckdb|pyiceberg|textual|pyarrow) '
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Install DuckDB's extensions
+        # A pre-release's extensions are published to the nightly repository, not the stable one.
+        run: |
+          uv run --no-sync python - <<'EOF'
+          import duckdb
+          for name in ("avro", "httpfs", "aws", "iceberg"):
+              try:
+                  duckdb.execute(f"INSTALL {name}")
+              except duckdb.Error:
+                  duckdb.execute(f"INSTALL {name} FROM core_nightly")
+              duckdb.connect().execute(f"LOAD {name}")
+              print(name, "loads")
+          EOF
+      # --no-sync: `uv run` would otherwise put the locked versions back first.
+      - run: uv run --no-sync pytest -q

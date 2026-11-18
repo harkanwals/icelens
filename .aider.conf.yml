@@ -1,0 +1,5 @@
+# Aider does not read AGENTS.md on its own; this hands it over read-only with every chat.
+read: AGENTS.md
+lint-cmd:
+  - "python: uv run ruff check"
+test-cmd: uv run pytest -q -x

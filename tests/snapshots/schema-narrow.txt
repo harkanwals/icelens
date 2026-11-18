@@ -1,0 +1,20 @@
+ ⭘       icelens — sandbox 'demo'  ·  demo.orders
+╭─ catalog ────────────────────────────────────────────────╮
+│  filter tables                                           │
+│ ▼ sandbox 'demo'                                         │
+│ └── ▼ demo  (1)                                          │
+│     └── orders                                           │
+╰──────────────────────────────────────────────────────────╯
+╭─ demo.orders ────────────────────────────────────────────╮
+│ 1 Overview  2 Schema  3 Data  4 Snapshots  5 Commit  6 Ma│
+│━━━━━━━━━━━━╸━━━━━━━━╺━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│
+│ schema id 1 of [0, 1] - 6 fields including nested        │
+│                                                          │
+╰──────────────────────────────────────────────────────────╯
+╭─ guide ──────────────────────────────────────────────────╮
+│ Table metadata (metadata.json)  One immutable JSON file  │
+│ holding everything true about the table at one moment.   │
+│ g for more                                               │
+╰──────────────────────────────────────────────────────────╯
+ sandbox demo (offline, v2) - writing is on (press e)   sql
+ q Quit  ? Help  / Filter  r Reload  u Now  x Ex▏^p palette

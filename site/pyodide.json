@@ -1,0 +1,16 @@
+{
+  "comment": "What the browser build loads, read by site/loader.mjs for both site/worker.js and tests/pyodide/run.mjs. 'packages' come before the first frame; 'later' (DuckDB, 8.5 MB, only for SQL) loads after it. 'drop' is left out of Pyodide's lockfile: nothing on the page imports pandas, and the demo's catalog is icelens.memory rather than SQLite, so SQLAlchemy is not needed either. Textual and icelens are listed in wheels/latest.json, which scripts/build_site.py writes. icelens runs below its own dependency floors here (see docs/PLATFORMS.md).",
+  "pyodide": "314.0.7",
+  "packages": [
+    "pyarrow",
+    "pyiceberg",
+    "icelens"
+  ],
+  "later": [
+    "duckdb"
+  ],
+  "drop": [
+    "pandas",
+    "sqlalchemy"
+  ]
+}

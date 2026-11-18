@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+icelens-*.csv
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# Each person's own agent state; the shared configuration is committed beside it.
+.claude/settings.local.json
+.claude/worktrees/
+.aider*
+!.aider.conf.yml
+
+# The website, built by scripts/build_site.py
+_site/
+
+# The Pyodide harness's own install (tests/pyodide/package-lock.json is committed)
+node_modules/
+tests/pyodide/.pyodide-cache/

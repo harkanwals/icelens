@@ -1,0 +1,34 @@
+ ⭘                                     icelens — sandbox 'demo'  ·  demo.orders
+╭─ catalog ────────────────────────╮╭─ demo.orders ────────────────────────────────────────────────────────────────────╮
+│  filter tables                   ││ 1 Overview  2 Schema  3 Data  4 Snapshots  5 Commit  6 Manifests  7 Files  8 Part│
+│                                  ││━━━━━━━━━━━━╸━━━━━━━━╺━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│
+│                                  ││ schema id 1 of [0, 1] - 6 fields including nested                                │
+│ ▼ sandbox 'demo'                 ││ id  column       type            required  key  partition  default  doc          │
+│ └── ▼ demo  (1)                  ││ 1   order_id     long            optional                                        │
+│     └── orders                   ││ 2   region       string          optional       identity                         │
+│                                  ││ 3   amount       decimal(10, 2)  optional                                        │
+│                                  ││ 4   customer_id  string          optional                                        │
+│                                  ││ 5   ordered_at   timestamp       optional                                        │
+│                                  ││ 6   channel      string          optional                                        │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  ││                                                                                  │
+│                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
+│                                  │╭─ guide ──────────────────────────────────────────────────────────────────────────╮
+│                                  ││ Table metadata (metadata.json)  One immutable JSON file holding everything true  │
+│                                  ││ about the table at one moment.   g for more                                      │
+│                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
+╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
+ q Quit  ? Help  / Filter  r Reload  u Now  x Export  c Copy  w Where  g Guide  l Row ids  ^r Run  ^o Catalo▏^p palette
