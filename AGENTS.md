@@ -5,7 +5,7 @@ instructions for both: Claude Code, Codex, Copilot, Cursor, Gemini, Aider, Jules
 rest read this file or a pointer to it, so add anything new here, never to one agent's file.
 
 icelens is a terminal browser for Apache Iceberg catalogs, written in Python (3.10+) with Textual,
-PyIceberg and DuckDB. `README.md` says what it does; this file says how to work on it.
+PyIceberg and DuckDB. `README.md` says what it does, `docs/GUIDE.md` all of it; this file says how to work on it.
 
 ## Setup
 
@@ -154,5 +154,5 @@ puts `copilot-instructions.md` ahead of this one.
   catalog is diagnosed from that file, not by adding prints.
 - The TUI cannot be driven from a plain shell. Drive it with Textual's pilot, as the tests do, and
   read a screen with `screen_text(app)` from `tests/snapshots.py`; or use the headless flags
-  (`--list`, `--pane`, `--sql`, `--json`; see `README.md`), which print what a pane would show.
+  (`--list`, `--pane`, `--sql`, `--json`; see `docs/GUIDE.md`), which print what a pane would show.
 - Do not commit generated files: `.venv/`, coverage output, `dist/`, `icelens-*.csv` exports.

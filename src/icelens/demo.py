@@ -15,7 +15,7 @@ writes it a short history, chosen so that every pane has something true to say:
 
 Everything goes through PyIceberg and nothing else, so it works on a machine with no network
 and no DuckDB extension. The data is arithmetic rather than random: the same demo every time,
-on every machine, which is what lets the tests and the README describe it exactly.
+on every machine, which is what lets the tests and the guide describe it exactly.
 
 A v3 sandbox gets the same story told the v3 way, by DuckDB, because nothing else writes v3:
 

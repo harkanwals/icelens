@@ -44,7 +44,8 @@ icelens opens any Iceberg catalog PyIceberg can reach. Tell it which, in any one
         uri: http://localhost:8181/catalog
         warehouse: WAREHOUSE
 
-Glue, Hive, SQL, Polaris, Snowflake and Databricks recipes are in the README.
+Glue, Hive, SQL, Polaris, Snowflake and Databricks recipes are in the guide:
+https://harkanwals.github.io/icelens/docs/
 To look around first, with nothing to set up: icelens --demo
 """
 

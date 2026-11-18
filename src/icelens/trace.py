@@ -14,7 +14,7 @@ credential-shaped parts of a statement or a URL are masked - every value of a `C
 but its type, scope, endpoint and key id; the literal after `TOKEN`, `SECRET` and their kin;
 a connection string's password; a URL's user and password and its signature parameters - so
 a secret icelens was never told about still does not reach the file. SQL a person types is
-traced as typed apart from those, which is why the README says to read a trace before posting
+traced as typed apart from those, which is why CONTRIBUTING.md says to read a trace before posting
 it. The file is created readable by its owner only, and an existing file is only appended to
 if it is a regular file this user owns.
 
