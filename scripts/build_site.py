@@ -28,7 +28,8 @@ BRANCH = "main"
 # Repository path -> (page under docs/, its name in the docs list). Links between these are
 # rewritten to the pages; a link to any other repository file goes to it on GitHub.
 DOCS = {
-    "README.md": ("index.html", "Guide"),
+    "docs/GUIDE.md": ("index.html", "Guide"),
+    "README.md": ("start.html", "Start"),
     "docs/PLATFORMS.md": ("platforms.html", "Platforms"),
     "docs/UNVERIFIED.md": ("unverified.html", "Unverified"),
     "docs/SANDBOX.md": ("sandbox.html", "Sandbox design"),

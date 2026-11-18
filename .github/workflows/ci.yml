@@ -20,7 +20,7 @@ env:
 
 defaults:
   run:
-    # bash on every runner, Windows included, so each step is written once
+    # bash on every runner, so each step is written once
     shell: bash
 
 jobs:
@@ -41,9 +41,8 @@ jobs:
   test:
     name: test (${{ matrix.os }}, ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
-    # Windows has never been run. It is here to find out, and does not block until it has passed
-    # once: `file://` warehouse paths and SQLite URIs are the likeliest things to differ there.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    # No Windows: PyIceberg 0.12 cannot open a `file:///C:/…` path, so local catalogs and sandboxes
+    # fail there (docs/GUIDE.md, Limitations). A job that is red by design only hides a real failure.
     strategy:
       fail-fast: false
       matrix:
@@ -51,8 +50,6 @@ jobs:
         python: ["3.10", "3.11", "3.12", "3.13"]
         include:
           - os: macos-latest
-            python: "3.13"
-          - os: windows-latest
             python: "3.13"
     steps:
       - uses: actions/checkout@v4

@@ -27,7 +27,7 @@ can send, whether it worked or not.
 ## Connecting
 
 Each line is a complete command. Put the same settings in `~/.pyiceberg.yaml` to save typing them;
-the guide's [Finding your catalog](../README.md#finding-your-catalog) shows how.
+the guide's [Finding your catalog](GUIDE.md#finding-your-catalog) shows how.
 
 ### Apache Polaris, and Snowflake Open Catalog
 

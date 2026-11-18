@@ -1,7 +1,7 @@
 # icelens --sandbox
 
 > Design notes, kept for the reasoning. They were written before the sandbox was built and are
-> marked where things shipped; for how it behaves now, the README's sandbox sections are the
+> marked where things shipped; for how it behaves now, the guide's sandbox sections are the
 > reference. Line numbers that once appeared here have been removed, since they drift.
 
 A writable scratch catalog with no setup, where every Iceberg verb is a command and every
