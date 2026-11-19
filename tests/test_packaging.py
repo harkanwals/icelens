@@ -98,6 +98,7 @@ def test_the_wheel_carries_every_module_and_the_stylesheet(wheel: Path) -> None:
     for module in MODULES:
         assert f"icelens/{module}.py" in names, module
     assert "icelens/icelens.tcss" in names, "the app cannot draw without its stylesheet"
+    assert "icelens/skills/icelens/SKILL.md" in names, "icelens --skill prints the skill from inside the package"
     assert not [n for n in names if n.startswith(("tests/", "docs/")) or "__pycache__" in n or n.endswith(".pyc")]
 
 

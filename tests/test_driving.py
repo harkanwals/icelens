@@ -235,7 +235,7 @@ async def test_the_guide_stays_off_until_you_ask_for_it_back(app: IcelensApp) ->
         await settle(app, pilot)
         app.open_table("demo.events")
         await settle(app, pilot)
-        await pilot.press("g", "g")
+        await pilot.press("g", "g")  # full, then one line, then off
         await pilot.pause()
         assert app.guide_mode == "off"
         guide = app.query_one("#guide", Static)
@@ -250,7 +250,7 @@ async def test_the_guide_stays_off_until_you_ask_for_it_back(app: IcelensApp) ->
         assert not guide.display
         await pilot.press("g")
         await pilot.pause()
-        assert app.guide_mode == "brief" and guide.display
+        assert app.guide_mode == "deep" and guide.display
 
 
 async def test_the_deep_rail_renders_every_term(app: IcelensApp) -> None:

@@ -6,16 +6,10 @@
 │ ▼ sandbox 'demo'                 ││▊ 1  -- a sandbox: write here, and watch what Iceberg makes of it. ctrl+r        ▎│
 │ └── ▼ demo  (1)                  ││▊    runs it.                                                                    ▎│
 │     └── orders                   ││▊ 2  CREATE TABLE demo.sales AS                                                  ▎│
-│                                  ││▊ 3    SELECT i AS id, 'r' || (i % 4) AS region, i * 1.5 AS amount               ▎│
+│                                  ││▊ 3    SELECT i AS id, 'r' || (i % 4) AS region, i * 1.5 AS amount            ▃▃ ▎│
 │                                  ││▊ 4    FROM range(1, 101) t(i);                                                  ▎│
 │                                  ││▊ 5                                                                              ▎│
-│                                  ││▊ 6  -- then try these, one at a time, and read the ledger below:                ▎│
-│                                  ││▊ 7  --   INSERT INTO demo.sales SELECT i, 'r0', 9.99 FROM range(101, 111)       ▎│
-│                                  ││▊    t(i);                                                                    ▇▇ ▎│
 │                                  ││▊▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▎│
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
 │                                  ││                                                                                  │
 │                                  ││                                                                                  │
 │                                  ││                                                                                  │
@@ -27,8 +21,14 @@
 │                                  ││                                                                                  │
 │                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
 │                                  │╭─ guide ──────────────────────────────────────────────────────────────────────────╮
-│                                  ││ Sandbox  A scratch catalog of this tool's own making, on local files, that you   │
-│                                  ││ are meant to write to.   g for more                                              │
+│                                  ││                                                                                  │
+│                                  ││ Sandbox  -  A scratch catalog of this tool's own making, on local files, that    │
+│                                  ││ you are meant to write to.                                                       │
+│                                  ││ Everywhere else this tool reads and nothing more. A sandbox is the exception: a  │
+│                                  ││ SQLite catalog and a directory, made on demand, holding nothing anybody can      │
+│                                  ││ lose. It exists so the way Iceberg behaves can be produced on purpose rather     │
+│                                  ││ than waited for - write a row, delete a row, and watch which snapshot appears    │
+│                                  ││                                                                                  │
 │                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
 ╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
  ^w Warehouse  / Filter  ^r Run  ^o Catalogs                                                                ▏^p palette

@@ -237,13 +237,13 @@ class GuideRail(Static):
     table and learning the vocabulary are then the same activity, which is the only version
     of this that people actually do.
 
-    Three states, cycled with `g`: a line (the default), the full entry, and off. The line is
-    the default because the rail has to be cheap enough to leave on - a paragraph under every
-    grid would be read twice and then resented.
+    Three states, cycled with `g`: the full entry (the default), a line, and off. The full entry
+    is the default because someone opening icelens is usually learning what they are looking
+    at; a reader who knows the nouns presses `g` once for the one-line rail.
     """
 
     #: how a state follows the one before it when `g` is pressed
-    NEXT = {"brief": "deep", "deep": "off", "off": "brief"}
+    NEXT = {"deep": "brief", "brief": "off", "off": "deep"}
 
     def __init__(self) -> None:
         super().__init__("", id="guide", markup=True)
@@ -357,7 +357,7 @@ class Help(ModalScreen[None]):
                v3 only, and no engine shows them unless you name them.
 
 [b]The guide[/b]
-  g            the rail at the bottom: a line → the full entry → off
+  g            the rail at the bottom: the full entry → a line → off
   It explains whatever the cursor is on and changes as you move: the pane, the column,
   the row, or the value in the cell. `icelens --explain <term>` is the same corpus.
 
@@ -434,9 +434,9 @@ class IcelensApp(App[None]):
         self.where: str = ""
         #: v3 row lineage beside the data. Off by default: most catalogs out there are v2.
         self.lineage = False
-        #: "brief" | "deep" | "off" - the guide rail is on by default, and is a
+        #: "deep" | "brief" | "off" - the guide rail is on, in full, by default, and is a
         #: feature of the layout rather than something you go and open.
-        self.guide_mode = "brief"
+        self.guide_mode = "deep"
         #: the pane just arrived at, until the cursor moves. Arriving somewhere and being told
         #: what the *column* is presumes you already know what the pane is - which is the
         #: assumption this whole rail exists to stop making.

@@ -103,6 +103,19 @@ icelens --sql 'SELECT count(*) FROM icelens."demo"."orders"'
 query, and `2` bad usage. The `--json` format is documented in the
 [guide](https://harkanwals.github.io/icelens/docs/#--json-for-readers-that-are-not-people).
 
+## With a coding agent
+
+icelens ships an [Agent Skill](https://agentskills.io) that teaches an LLM agent to drive it
+through the headless flags: find the catalog, read any pane as JSON, query with read-only SQL,
+explain Iceberg terms, and write only in a sandbox. Install it where your agent looks for
+skills; for Claude Code:
+
+```bash
+mkdir -p ~/.claude/skills/icelens && icelens --skill > ~/.claude/skills/icelens/SKILL.md
+```
+
+`icelens --skill` prints the skill for the installed version, so rerun it after an upgrade.
+
 ## Where it works
 
 Tested against Iceberg REST (Lakekeeper, Apache Polaris) and local SQL catalogs. Snowflake,

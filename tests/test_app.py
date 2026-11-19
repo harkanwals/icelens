@@ -371,14 +371,15 @@ async def test_g_cycles_the_guide(app: IcelensApp) -> None:
         app.open_table("demo.events")
         await settle(app, pilot)
         guide = app.query_one("#guide", Static)
-        assert app.guide_mode == "brief" and guide.display
-        brief = rail(app)
+        # It opens in full: someone new to icelens is the reader the rail is for.
+        assert app.guide_mode == "deep" and guide.display
+        deep = rail(app)
+        assert "next:" in deep  # the trail of related terms is a deep-mode thing
 
         await pilot.press("g")
         await pilot.pause()
-        assert app.guide_mode == "deep"
-        assert len(rail(app)) > len(brief)
-        assert "next:" in rail(app)  # the trail of related terms is a deep-mode thing
+        assert app.guide_mode == "brief"
+        assert len(rail(app)) < len(deep) and "g for more" in rail(app)
 
         await pilot.press("g")
         await pilot.pause()
@@ -386,7 +387,7 @@ async def test_g_cycles_the_guide(app: IcelensApp) -> None:
 
         await pilot.press("g")
         await pilot.pause()
-        assert app.guide_mode == "brief" and guide.display
+        assert app.guide_mode == "deep" and guide.display
 
 
 async def test_a_catalog_that_needs_a_warehouse_asks_instead_of_drawing_an_empty_tree(

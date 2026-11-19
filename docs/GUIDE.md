@@ -21,8 +21,8 @@ Arriving at a pane names the pane first - "Manifest", not "File content" - becau
 what the column means presumes you already know what you are looking at. One keypress in any
 direction and the rail is back to the cell, where it spends the rest of its life.
 
-`g` cycles it: one line (the default), the full entry with where the thing lives on disk and
-which terms to read next, then off. It is not a help window - it is part of the layout, and it
+It opens in full - what the thing is, where it lives on disk and which terms to read next - and
+`g` cycles it: one line, then off, then full again. It is not a help window - it is part of the layout, and it
 is about the cell in front of you rather than about Iceberg in general.
 
 The same terms are available without the UI:
