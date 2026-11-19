@@ -58,6 +58,10 @@ _DOTENV_SUFFIXES: tuple[tuple[str, str], ...] = (
     ("ACCESS_KEY_ID", "s3.access-key-id"),
     ("S3_SECRET_KEY", "s3.secret-access-key"),
     ("SECRET_ACCESS_KEY", "s3.secret-access-key"),
+    # CATALOG_ and not a bare TOKEN or CREDENTIAL: a project's .env holds GITHUB_TOKEN and
+    # SLACK_TOKEN too, and whatever matched here would be sent to the catalog server.
+    ("CATALOG_TOKEN", "token"),
+    ("CATALOG_CREDENTIAL", "credential"),
 )
 
 
@@ -409,6 +413,93 @@ def only_reads(sql: str) -> str:
             f"refusing to run {', '.join(sorted(offenders))}: icelens reads. Pass --allow-writes to mean it."
         )
     return sql
+
+
+#: The only table functions `--sql` may call: they make rows out of nothing. Every other one -
+#: read_text, read_csv, glob, parquet_scan, query, duckdb_settings - reads this machine or
+#: DuckDB itself, and the list of those grows with every extension, so this one is the list kept.
+ROW_MAKERS: frozenset[str] = frozenset({"range", "generate_series", "unnest"})
+#: Scalar functions that read this process rather than the catalog: its settings, its
+#: variables and which secret would answer for a path.
+_PROCESS_READERS: frozenset[str] = frozenset({"current_setting", "getenv", "getvariable", "which_secret"})
+#: A table name with one of these in it, and no catalog or schema, is DuckDB's cue to read a file
+#: or a URL by that name instead: `FROM '/etc/hosts'`, `FROM "s3://bucket/x.parquet"`.
+_PATH_LIKE = re.compile(r"[/\\:.*?~]")
+
+
+def stays_in_catalog(sql: str) -> str:
+    """The SQL back, having checked it reads only the catalog. Raises if it reaches past it.
+
+    Read-only is not the same as harmless: `SELECT content FROM read_text('~/.aws/credentials')`
+    writes nothing and hands back the machine's secrets. `--sql` is what an agent drives, and an
+    agent can be talked into a query by text a catalog served it - a table comment, a property,
+    a value - so `--sql` reads tables and nothing else. The app's SQL pane is exempt for the
+    reason `only_reads` gives; `--allow-writes` lifts this as it lifts that.
+    """
+    reaches = _outside_catalog(sql)
+    if reaches:
+        raise IcelensError(
+            f"refusing {', '.join(sorted(reaches))}: --sql reads the catalog's tables, not this machine's "
+            "files or DuckDB's settings. To query a local file, use DuckDB itself."
+        )
+    return sql
+
+
+def _outside_catalog(sql: str) -> set[str]:
+    """What in `sql` reads past the catalog; empty when it reads only tables."""
+    try:
+        import duckdb
+
+        statements = duckdb.extract_statements(sql)
+    except ImportError:
+        return set()
+    except Exception:  # noqa: BLE001 - a parse failure is DuckDB's to report, and nothing runs
+        return set()
+    found: set[str] = set()
+    parser = duckdb.connect(":memory:")
+    try:
+        for statement in statements:
+            kind, text = statement.type.name, statement.query or ""
+            if kind == "EXPLAIN":
+                # Binding is enough to read a file - a CSV's header is sniffed to plan the scan -
+                # so what EXPLAIN explains is held to the same rule.
+                match = _EXPLAINING.match(text)
+                if match is None:
+                    continue  # only_reads refuses it
+                text, kind = match.group("tail"), "SELECT"
+            if kind != "SELECT":
+                continue  # only_reads' to refuse; a sandbox's --write is not checked here
+            row = parser.execute("SELECT json_serialize_sql(?)", [text]).fetchone()
+            tree = json.loads(row[0]) if row else {"error": True}
+            if tree.get("error"):
+                # A SELECT the serializer cannot read is a SELECT this cannot check.
+                found.add("a query icelens cannot check")
+                continue
+            _collect_reaches(tree, found)
+    finally:
+        parser.close()
+    return found
+
+
+def _collect_reaches(node: Any, found: set[str]) -> None:
+    if isinstance(node, list):
+        for item in node:
+            _collect_reaches(item, found)
+        return
+    if not isinstance(node, dict):
+        return
+    kind = node.get("type")
+    if kind == "TABLE_FUNCTION":
+        name = str((node.get("function") or {}).get("function_name", "")).lower()
+        if name not in ROW_MAKERS:
+            found.add(f"{name}()")
+    elif kind == "FUNCTION" and str(node.get("function_name", "")).lower() in _PROCESS_READERS:
+        found.add(f"{str(node['function_name']).lower()}()")
+    elif kind == "BASE_TABLE" and not node.get("catalog_name") and not node.get("schema_name"):
+        if _PATH_LIKE.search(str(node.get("table_name", ""))):
+            found.add("a file or URL as a table")
+    for value in node.values():
+        _collect_reaches(value, found)
 
 
 def _writes_in(sql: str) -> set[str]:

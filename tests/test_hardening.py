@@ -31,6 +31,7 @@ from icelens.catalog import (
     remember_secrets,
     row_limit,
     scrub,
+    stays_in_catalog,
 )
 from icelens.format import REPLACEMENT, cell, grid, safe
 
@@ -328,6 +329,9 @@ async def test_a_catalog_name_cannot_drive_the_terminal(app) -> None:
     table = _EVIL_NAME + ".t\x1b[2J"
     async with app.run_test(size=(120, 40)) as pilot:
         await settle(app, pilot)
+        app.select_table("demo.events")  # a starter query for a table that is not the next one
+        await pilot.pause()
+        assert "events" in app.query_one("#sql", TextArea).text
         app._build_tree([_EVIL_NAME], {_EVIL_NAME: [table]}, "")
         app.select_table(table)
         await pilot.pause()
@@ -338,7 +342,31 @@ async def test_a_catalog_name_cannot_drive_the_terminal(app) -> None:
         assert "\x1b" not in app.sub_title
         # The starter query is left alone rather than holding the raw name or a cleaned one
         # that would name a different table.
-        assert "evil" not in app.query_one("#sql", TextArea).text
+        sql = app.query_one("#sql", TextArea).text
+        assert "evil" not in sql and "events" not in sql
+
+
+async def test_the_table_palette_shows_a_hostile_name_without_obeying_it(app) -> None:
+    """`[/]` is a legal table name, and a str prompt in Textual's palette is parsed as markup:
+    it raised MarkupError and the app exited with a traceback."""
+    from harness import settle
+    from textual.command import CommandPalette
+
+    async with app.run_test(size=(120, 40)) as pilot:
+        await settle(app, pilot)
+        app.known_tables = ["demo.[/]", "demo.[link=http://evil.example]o[/link]", _EVIL_NAME + ".t"]
+        for typed in ("", "demo"):
+            await pilot.press("ctrl+p")
+            await pilot.pause()
+            if typed:
+                await pilot.press(*typed)
+            await pilot.pause(0.5)
+            assert isinstance(app.screen, CommandPalette), "the palette did not stay open"
+            frame = _frame(app)
+            assert "\x1b]8;;http://evil" not in frame and "[/]" in frame
+            await pilot.press("escape")
+            await pilot.pause()
+        assert app.is_running
 
 
 async def test_a_server_error_in_the_tree_is_text_not_markup(app, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -531,3 +559,56 @@ def test_the_dotenv_walk_stops_at_the_first_directory_that_is_not_mine(tmp_path:
     assert all(path.parent.stat().st_uid == os.getuid() for path in walked)
     if os.getuid() == 0:
         assert walked == [mine.resolve() / ".env"]
+
+
+# -- --sql reads tables, not the machine -------------------------------------------------------
+
+_SECRET = "/home/u/.aws/credentials"
+
+
+@pytest.mark.parametrize("sql", [
+    f"SELECT content FROM read_text('{_SECRET}')",
+    f"select * from READ_TEXT('{_SECRET}')",
+    f"SELECT * FROM main.read_text('{_SECRET}')",
+    f"SELECT * FROM '{_SECRET}'",
+    f'SELECT * FROM "{_SECRET}"',
+    f"FROM '{_SECRET}'",
+    f"DESCRIBE '{_SECRET}'",
+    f"SUMMARIZE '{_SECRET}'",
+    "SELECT * FROM '~/x.csv'",
+    "SELECT * FROM 's3://another-bucket/x.parquet'",
+    f"SELECT * FROM read_csv_auto(['{_SECRET}'])",
+    f"SELECT * FROM (FROM '{_SECRET}')",
+    f"EXPLAIN SELECT * FROM read_csv('{_SECRET}')",  # binding sniffs the header
+    f"SELECT 1 UNION SELECT content FROM read_text('{_SECRET}')",
+    f"WITH x AS (SELECT * FROM read_text('{_SECRET}')) SELECT * FROM x",
+    f"SELECT (SELECT content FROM read_text('{_SECRET}'))",
+    f"SELECT * FROM icelens.demo.orders, read_text('{_SECRET}')",
+    f"SELECT * FROM query('SELECT * FROM read_text(''{_SECRET}'')')",
+    "SELECT * FROM glob('/*')",
+    "SELECT * FROM duckdb_settings()",
+    "SELECT * FROM duckdb_secrets()",
+    "SELECT current_setting('home_directory')",
+])
+def test_sql_cannot_read_past_the_catalog(sql: str) -> None:
+    """Read-only is not harmless: these write nothing and hand back the machine's files or settings,
+    and an agent driving --sql can be talked into one by text a catalog served it."""
+    with pytest.raises(IcelensError, match="--sql reads the catalog"):
+        stays_in_catalog(sql)
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT 1",
+    'SELECT * FROM icelens."demo"."orders"',
+    "SELECT region, count(*) FROM icelens.demo.orders GROUP BY 1",
+    'SELECT * FROM icelens."demo"."orders" AT (VERSION => 1)',
+    "SELECT * FROM demo.orders",
+    "SELECT * FROM range(3)",
+    "SELECT * FROM generate_series(1, 3)",
+    "SELECT unnest([1, 2])",
+    "WITH c AS (SELECT 1 AS a) SELECT * FROM c",
+    "EXPLAIN SELECT * FROM icelens.demo.orders",
+    "SELECT 'a.b/c' AS looks_like_a_path_but_is_a_value",
+])
+def test_sql_that_reads_the_catalog_is_let_through(sql: str) -> None:
+    assert stays_in_catalog(sql) == sql

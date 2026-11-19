@@ -39,6 +39,7 @@ from icelens.catalog import (
     rest_sandbox_target,
     sandbox_target,
     scrub,
+    stays_in_catalog,
     without_own_keys,
 )
 from icelens.format import csv_bytes, grid, safe
@@ -544,6 +545,7 @@ def _main(argv: list[str] | None) -> int:
                     if lake.is_sandbox:
                         raise IcelensError(f"{exc} In a sandbox, --write commits a statement and says what it did.") from exc
                     raise
+                stays_in_catalog(args.sql)
             data = lake.query(args.sql)
             return _print_pane(Pane(data), args, "sql", sql=args.sql)
         if args.pane:

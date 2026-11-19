@@ -604,3 +604,14 @@ def test_csv_to_a_terminal_cannot_drive_it_but_a_file_gets_exact_bytes(lake: Lak
         assert hostile in capfd.readouterr().out  # redirected, it is the exact value
     finally:
         lake.catalog.drop_table("demo.hostile")
+
+
+def test_sql_refuses_to_read_a_local_file(lake: Lake, capsys, tmp_path) -> None:
+    secret = tmp_path / "secret.txt"
+    secret.write_text("SECRETLINE\n")
+    sql = f"SELECT content FROM read_text('{secret}')"
+    assert main(argv(lake, "--sql", sql, "--json")) == 1
+    captured = capsys.readouterr()
+    assert captured.out == "" and "SECRETLINE" not in captured.err
+    message = json.loads(captured.err)["error"]["message"]
+    assert "--sql reads the catalog" in message and "--write" not in message  # not a write to redirect

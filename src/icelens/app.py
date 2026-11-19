@@ -28,6 +28,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.command import DiscoveryHit, Hit, Hits, Provider
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.content import Content
 from textual.coordinate import Coordinate
 from textual.notifications import SeverityLevel
 from textual.screen import ModalScreen
@@ -282,21 +283,24 @@ class TableCommands(Provider):
         assert isinstance(app, IcelensApp)
         return lambda: app.open_table(ident)
 
+    # A str prompt is parsed as markup, and so is anything handed to `Matcher.highlight`: a table
+    # named `demo.[/]` raised MarkupError out of the palette and took the app down. So the name is
+    # made plain Content here, through safe(), and the match is highlighted by hand.
     async def discover(self) -> Hits:
         for ident in self.tables[:20]:
-            yield DiscoveryHit(ident, self._opener(ident), help="open table")
+            yield DiscoveryHit(Content(safe(ident)), self._opener(ident), text=ident, help="open table")
 
     async def search(self, query: str) -> Hits:
         matcher = self.matcher(query)
         for ident in self.tables:
-            score = matcher.match(ident)
+            shown = safe(ident)
+            score, offsets = matcher.fuzzy_search.match(matcher.query, shown)
             if score > 0:
-                yield Hit(
-                    score,
-                    matcher.highlight(ident),
-                    self._opener(ident),
-                    help="open table",
-                )
+                content = Content(shown)
+                for offset in offsets:
+                    if not shown[offset].isspace():
+                        content = content.stylize(matcher.match_style, offset, offset + 1)
+                yield Hit(score, content, self._opener(ident), text=ident, help="open table")
 
 
 class Picker(ModalScreen[str]):
@@ -668,7 +672,10 @@ class IcelensApp(App[None]):
             return
         if safe(ident) != ident:
             # A name with control codes in it: the cleaned spelling would name another table, and
-            # the raw one would put ESC sequences into an editor that draws them as they are.
+            # the raw one would put ESC sequences into an editor that draws them as they are. The
+            # last table's starter query goes too, or running it would answer for the wrong table.
+            if self._sql_seed:
+                area.text, self._sql_seed = "", ""
             return
         self._sql_seed = f"SELECT * FROM {qualified(ident)} LIMIT 20"
         area.text = self._sql_seed

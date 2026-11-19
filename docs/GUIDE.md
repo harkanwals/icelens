@@ -45,7 +45,10 @@ Otherwise the connection is assembled from these, each overriding the ones below
 
 1. Command line: `--uri`, `--warehouse`, `-p key=value` (any PyIceberg property, repeatable:
    `-p s3.endpoint=http://localhost:9000`).
-2. `ICELENS_*` environment variables: `ICELENS_CATALOG_URI`, `ICELENS_WAREHOUSE`, `ICELENS_S3_ENDPOINT`, …
+2. `ICELENS_*` environment variables: `ICELENS_CATALOG_URI`, `ICELENS_WAREHOUSE`, `ICELENS_S3_ENDPOINT`,
+   `ICELENS_CATALOG_TOKEN`, `ICELENS_CATALOG_CREDENTIAL`, … A `.env` is matched on the end of the
+   name instead, so `MYAPP_CATALOG_TOKEN` works unedited; only a `CATALOG_TOKEN` or
+   `CATALOG_CREDENTIAL` name is taken as the catalog's secret, never a bare `GITHUB_TOKEN`.
 3. A profile named with `--catalog <name>` from `~/.pyiceberg.yaml`. Naming one is a decision,
    so a `.env` in the working directory is not read when you do.
 4. Otherwise the nearest `.env`, searching upwards from the working directory and stopping at your
@@ -80,7 +83,7 @@ catalog:
 Keep secrets out of it. A catalog that vends credentials needs none. One that wants a token or a
 client secret can take it from PyIceberg's environment variables -
 `PYICEBERG_CATALOG__LAB__CREDENTIAL=id:secret icelens --catalog lab` - or from a `.env` only you
-can read. `-p token=…` works too, but a command line is visible to every user on the machine
+can read (`ICELENS_CATALOG_TOKEN=…`, `ICELENS_CATALOG_CREDENTIAL=id:secret`). `-p token=…` works too, but a command line is visible to every user on the machine
 (`ps`) for as long as the app runs.
 
 A REST catalog that hosts several warehouses (Lakekeeper, Polaris) will refuse to answer without
@@ -450,6 +453,14 @@ without touching the catalog at all. Anything that is not a `SELECT` or an `EXPL
 (DuckDB types `DESCRIBE`, `SHOW`, `SUMMARIZE` and a CTE as `SELECT`, so those are fine). This
 check applies in a sandbox too, which is attached writable: a sandbox is written with `--write`
 or the Writer pane, and `--sql` stays a reader everywhere.
+
+**And it reads only the catalog.** Writing nothing is not the same as harmless:
+`SELECT content FROM read_text('~/.aws/credentials')` is a read. `--sql` is what scripts and
+agents drive, and an agent can be talked into a query by text a catalog served it, so a table
+function other than `range`, `generate_series` and `unnest`, a file or URL named as a table
+(`FROM '/path'`), and a function that reads DuckDB's own settings are refused too.
+`--allow-writes` lifts this with the rest; the app's SQL pane, typed into by a person, is not
+checked. To query a local file, use DuckDB itself.
 
 ```bash
 $ icelens --sql "SELECT 1; DROP TABLE demo.orders" --json

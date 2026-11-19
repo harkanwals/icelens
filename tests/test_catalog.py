@@ -329,3 +329,25 @@ def test_no_gcs_configuration_means_no_secret_at_all() -> None:
     """A half-filled secret shadows DuckDB's own credential chain; absence lets ADC work."""
     assert Lake(Target(properties={"type": "rest", "uri": "https://x.example/c"}))._gcs_secret_sql() is None
     assert Lake(Target(properties={"gcs.access-key-id": "GOOG1E"}))._gcs_secret_sql() is None
+
+
+def test_a_catalog_token_in_a_dotenv_is_used_and_no_other_token_is(tmp_path: Path) -> None:
+    """The docs say a token can live in a .env only you can read; it used to be dropped silently,
+    and the catalog then answered 401 with no hint why. Only a CATALOG_ name counts: any other
+    token in the file would be handed to the catalog server."""
+    env = tmp_path / ".env"
+    env.write_text(
+        "APP_CATALOG_URI=http://catalog.example:8181/catalog\n"
+        "APP_CATALOG_TOKEN=tok-for-the-catalog-1234\n"
+        "APP_CATALOG_CREDENTIAL=client:secret-5678\n"
+        "GITHUB_TOKEN=ghp-not-for-the-catalog\n"
+        "SLACK_CREDENTIAL=not-for-the-catalog-either\n"
+    )
+    env.chmod(0o600)
+    target = discover(env_file=env)
+    assert target.properties["token"] == "tok-for-the-catalog-1234"
+    assert target.properties["credential"] == "client:secret-5678"
+    assert "ghp-not-for-the-catalog" not in str(target.properties)
+    assert "not-for-the-catalog-either" not in str(target.properties)
+    shown = str(target.redacted())
+    assert "tok-for-the-catalog-1234" not in shown and "secret-5678" not in shown
