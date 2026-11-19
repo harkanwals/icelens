@@ -16,7 +16,9 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
+  # Not "OS Independent": local catalogs and sandboxes do not work on Windows yet (docs/PLATFORMS.md).
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -37,7 +39,10 @@ dependencies = [
   "pyiceberg[pyarrow,sql-sqlite]>=0.12,<0.13",
   # Scanning, the SQL pane and every sandbox write. 1.5.5 is the release the suite and the
   # v3 sandbox (deletion vectors, MERGE) were built against; the canary job tries newer ones.
-  "duckdb>=1.5.5",
+  # The ceiling is load-bearing: DuckDB 2.0 dropped `.arrow()` on a relation, which every
+  # sandbox CREATE uses, and pip, pipx and `uv tool install` ignore uv.lock. Lift it only
+  # once the suite passes on 2.x.
+  "duckdb>=1.5.5,<2",
   # PyIceberg 0.12's own floor.
   "pyarrow>=18",
 ]

@@ -56,6 +56,7 @@ from icelens.catalog import (
     probe_warehouses,
     profile_target,
     qualified,
+    scrub,
 )
 from icelens.format import csv_bytes, grid, pylist, safe, scalar
 from icelens.model import Pane, View
@@ -511,7 +512,7 @@ class IcelensApp(App[None]):
 
     def on_mount(self) -> None:
         self.title = "icelens"
-        self.sub_title = self.lake.target.label
+        self.sub_title = safe(self.lake.target.label)
         self.frame(None)
         self.query_one("#nav", Tree).root.data = NodeData("catalog")
         # the tree, not the filter box: otherwise the single-key pane shortcuts get typed
@@ -524,14 +525,15 @@ class IcelensApp(App[None]):
     @work(exclusive=True, group="tree")
     async def load_tree(self) -> None:
         tree = self.query_one("#nav", Tree)
-        tree.root.set_label(Text(f"{self.lake.target.title}  (loading…)"))
+        tree.root.set_label(Text(f"{safe(self.lake.target.title)}  (loading…)"))
         try:
             namespaces = await asyncio.to_thread(self.lake.namespaces)
         except NeedsWarehouse as exc:
             await self._ask_warehouse(exc)
             return
         except Exception as exc:  # noqa: BLE001 - every failure here is the user's to see
-            tree.root.set_label(f"cannot list namespaces: {exc}")
+            # Text, not str: a server error is the server's text, and a str label is parsed as markup.
+            tree.root.set_label(Text(safe(scrub(f"cannot list namespaces: {exc}"))))
             self.notify(str(exc), severity="error", timeout=12)
             return
         eager = len(namespaces) <= EAGER_NAMESPACES
@@ -544,7 +546,7 @@ class IcelensApp(App[None]):
                     tables[namespace] = []
                 self.known_views[namespace] = await asyncio.to_thread(self.lake.views, namespace)
         self.known_tables = sorted(ident for idents in tables.values() for ident in idents)
-        tree.root.set_label(Text(self.lake.target.title))
+        tree.root.set_label(Text(safe(self.lake.target.title)))
         self._build_tree(namespaces, tables, "")
         if self._pending:
             self.open_table(self._pending)
@@ -567,20 +569,21 @@ class IcelensApp(App[None]):
                     continue
             node = tree.root.add(
                 # Text, not str: a namespace is named by whoever created it, and Tree renders
-                # a str label through the markup parser.
-                Text(f"{namespace}" + (f"  ({len(idents)})" if idents is not None else "")),
+                # a str label through the markup parser. safe() as well: Text stops markup but
+                # passes ESC through, and a name can carry a screen clear or an OSC 52 clipboard write.
+                Text(safe(namespace) + (f"  ({len(idents)})" if idents is not None else "")),
                 data=NodeData("namespace", namespace),
                 expand=bool(needle) or len(namespaces) <= 8,
             )
             for ident in idents or []:
-                node.add_leaf(Text(ident.split(".")[-1]), data=NodeData("table", ident))
+                node.add_leaf(Text(safe(ident.split(".")[-1])), data=NodeData("table", ident))
             self._add_views(node, views)
         tree.root.expand()
 
     @staticmethod
     def _add_views(node: Any, views: list[str]) -> None:
         for ident in views:
-            node.add_leaf(Text.assemble(ident.split(".")[-1], ("  view", "dim italic")), data=NodeData("view", ident))
+            node.add_leaf(Text.assemble(safe(ident.split(".")[-1]), ("  view", "dim italic")), data=NodeData("view", ident))
 
     @on(Tree.NodeExpanded, "#nav")
     async def expand_namespace(self, event: Tree.NodeExpanded) -> None:
@@ -594,7 +597,7 @@ class IcelensApp(App[None]):
             self.notify(f"{data.name}: {exc}", severity="error")
             return
         for ident in idents:
-            node.add_leaf(Text(ident.split(".")[-1]), data=NodeData("table", ident))
+            node.add_leaf(Text(safe(ident.split(".")[-1])), data=NodeData("table", ident))
         views = await asyncio.to_thread(self.lake.views, data.name)
         self.known_views[data.name] = views
         self._add_views(node, views)
@@ -613,7 +616,7 @@ class IcelensApp(App[None]):
             self.ident = None
             self.view_ident = data.name
             self.snapshot_id = None
-            self.sub_title = f"{self.lake.target.title}  ·  {data.name} (view)"
+            self.sub_title = safe(f"{self.lake.target.title}  ·  {data.name} (view)")
             self.refresh_pane(force=False)
         elif data.kind == "namespace":
             self.namespace = data.name
@@ -663,6 +666,10 @@ class IcelensApp(App[None]):
         area = self.query_one("#sql", TextArea)
         if area.text.strip() not in ("", _SQL_HINT, self._sql_seed):
             return
+        if safe(ident) != ident:
+            # A name with control codes in it: the cleaned spelling would name another table, and
+            # the raw one would put ESC sequences into an editor that draws them as they are.
+            return
         self._sql_seed = f"SELECT * FROM {qualified(ident)} LIMIT 20"
         area.text = self._sql_seed
 
@@ -674,7 +681,7 @@ class IcelensApp(App[None]):
         self.view_ident = None
         self.namespace = ident.rsplit(".", 1)[0]
         self.snapshot_id = None
-        self.sub_title = f"{self.lake.target.title}  ·  {ident}"
+        self.sub_title = safe(f"{self.lake.target.title}  ·  {ident}")
         self.frame(ident)
         self.refresh_pane(force=False)
         self.status()
@@ -927,7 +934,7 @@ class IcelensApp(App[None]):
         self.known_tables = []
         self.known_views = {}
         self.view_ident = None
-        self.sub_title = self.lake.target.label
+        self.sub_title = safe(self.lake.target.label)
         self.frame(None)
         self.notify(f"catalog {chosen}")
         self.load_tree()
@@ -1209,7 +1216,7 @@ class IcelensApp(App[None]):
         self.known_tables = []
         self.known_views = {}
         self.view_ident = None
-        self.sub_title = self.lake.target.label
+        self.sub_title = safe(self.lake.target.label)
         self.frame(None)
         self._cache.clear()
         self.load_tree()

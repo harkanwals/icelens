@@ -1,0 +1,12 @@
+# Actions are pinned to commit SHAs, so a moved tag cannot change what CI runs; this is what
+# proposes the next SHA. Python dependencies are not here: their floors and ceilings are tested
+# by hand (AGENTS.md), and the canary workflow is what tries the newest releases.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

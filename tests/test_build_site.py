@@ -16,6 +16,10 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+if not (ROOT / "scripts" / "build_site.py").is_file():
+    # The sdist ships the package and its tests, not the website; a plain `pytest` there must
+    # still collect everything else.
+    pytest.skip("the website's build script is not in this source tree", allow_module_level=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import build_site  # noqa: E402
@@ -168,6 +172,12 @@ def test_the_build_writes_the_pages(tmp_path):
         for name in build_site.STAMPED:
             assert not re.search(rf"""["'](\.\.?/)?{re.escape(name)}["']""", text), (path.name, name)
     assert '"./loader.mjs?v=' in (out / "worker.js").read_text(encoding="utf-8")
+    # A script or stylesheet from another origin runs with this one's authority, so each carries
+    # the hash of the bytes it is meant to be.
+    for path in [*out.glob("*.html"), *out.glob("docs/*.html")]:
+        html = path.read_text(encoding="utf-8")
+        for tag in re.findall(r"<script[^>]+src=\"https?://[^>]*>|<link[^>]+rel=\"stylesheet\"[^>]+href=\"https?://[^>]*>", html):
+            assert re.search(r'integrity="sha384-[A-Za-z0-9+/]{64}"', tag) and 'crossorigin="anonymous"' in tag, (path.name, tag)
     # A rebuild replaces a previous build; anything else in the way is refused.
     build_site.build(out, wheel=False)
     other = tmp_path / "other"

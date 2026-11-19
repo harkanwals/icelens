@@ -1323,10 +1323,33 @@ class _Server(ThreadingHTTPServer):
     # skips TIME_WAIT.
     allow_reuse_address = os.name != "nt"
 
+    #: Connections served at once. Each holds a thread and a descriptor until it closes or idles
+    #: out, and the token is checked only once a request arrives - so without a cap any local
+    #: process could open connections until the process ran out of either. Far above what a
+    #: DuckDB or Spark session opens; a connection past it is closed at once.
+    max_connections = 64
+
     def __init__(self, catalog: Catalog, token: str, log: list[str] | None, port: int = 0) -> None:
         super().__init__(("127.0.0.1", port), _Handler)
         self.catalog, self.token, self.log = catalog, token, log
         self.stopped = False
+        self._slots = threading.BoundedSemaphore(self.max_connections)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        if not self._slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._slots.release()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._slots.release()
 
 
 @dataclass
