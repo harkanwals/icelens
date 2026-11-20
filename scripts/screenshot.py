@@ -1,9 +1,10 @@
-"""The website's screenshot: icelens on the demo table, drawn as HTML, with where its labels go.
+"""The website's screenshots: a walk through the demo table, drawn as HTML, with labels.
 
-`python scripts/screenshot.py [WIDTH HEIGHT]` prints JSON for `build_site.py`: the screen in the
-site's dark and light themes, and the row and column of the text each label points at. It runs
-the real app, headless, on a fresh demo sandbox, so the picture is the app as it is today; a
-label whose text is no longer on screen fails the build rather than pointing at the wrong thing.
+`python scripts/screenshot.py [WIDTH HEIGHT]` prints JSON for `build_site.py`: each scene of the
+walk in the site's dark and light themes, and the row and column of the text each label points
+at. It runs the real app, headless, on a fresh demo sandbox, pressing the keys a person would, so
+the pictures are the app as it is today; a label whose text is no longer on screen fails the
+build rather than pointing at the wrong thing.
 """
 
 from __future__ import annotations
@@ -21,15 +22,35 @@ from typing import Any
 #: published: a fixed path under /tmp keeps the build machine's own folders off the website.
 HOME = Path("/tmp/icelens-screenshot")
 
-#: What the screenshot labels: text the screen must show, whether the label goes just before it
-#: or just after the phrase it starts, and what the label says.
-CALLOUTS = (
-    ("▼ sandbox 'demo'", "after", "The catalog: namespaces and their tables. <kbd>/</kbd> filters them, <kbd>ctrl+p</kbd> finds any table."),
-    ("1 Overview", "before", "Ten panes, one key each: <kbd>1</kbd>&ndash;<kbd>9</kbd> and <kbd>0</kbd>. In Snapshots, <kbd>Enter</kbd> pins one and every pane re-reads as of it."),
-    ("read through", "after", "Where these numbers came from: which engine read them."),
-    ("property", "before", "The pane. Arrow keys move; <kbd>x</kbd> exports it to CSV, <kbd>c</kbd> copies a cell."),
-    ("Table metadata", "before", "The guide rail: what the thing under the cursor is in Iceberg. <kbd>g</kbd> shortens it or hides it."),
-    ("sandbox demo (", "before", "The status bar: which catalog this is, and how it is read. Under it, the keys that work here; <kbd>?</kbd> lists them all."),
+Callout = tuple[str, str, str]
+
+#: The walk. Each scene is the keys pressed to reach it from the one before, and its labels: text
+#: the screen must show, where the label goes (just before it, just after the phrase it starts,
+#: or at the start of its row, where columns are too close together for a label between them),
+#: and what the label says.
+SCENES: tuple[dict[str, Any], ...] = (
+    dict(name="overview", title="A table", keys=(), callouts=(
+        ("▼ sandbox 'demo'", "after", "The catalog: namespaces and their tables. <kbd>/</kbd> filters them, <kbd>ctrl+p</kbd> finds any table."),
+        ("1 Overview", "before", "Ten panes, one key each: <kbd>1</kbd>&ndash;<kbd>9</kbd> and <kbd>0</kbd>."),
+        ("read through", "after", "Where these numbers came from: which engine read them."),
+        ("property", "before", "The pane. Arrow keys move; <kbd>x</kbd> exports it to CSV, <kbd>c</kbd> copies a cell."),
+        ("Table metadata", "before", "The guide rail: what the thing under the cursor is in Iceberg. <kbd>g</kbd> shortens it or hides it."),
+        ("sandbox demo (", "before", "The status bar: which catalog this is, and how it is read. Under it, the keys that work here; <kbd>?</kbd> lists them all."),
+    )),
+    dict(name="history", title="Its history", keys=("4", "comma", "comma"), callouts=(
+        ("snapshots - ◆", "after", "Every commit the table has had, oldest first. &#9670; is the current one."),
+        ("overwrite", "row", "<kbd>,</kbd> and <kbd>.</kbd> step through history, and <kbd>Enter</kbd> pins a commit. Here, two steps back: the overwrite."),
+        ("parent", "after", "<kbd>Enter</kbd> on a parent cell steps back to that commit."),
+    )),
+    dict(name="as-of", title="As it was", keys=("3",), callouts=(
+        ("as of snapshot", "after", "Every pane now reads as of the pinned commit: these are the rows as they were then. <kbd>u</kbd> comes back to now."),
+        ("WHERE", "before", "<kbd>w</kbd> filters the rows with a WHERE clause."),
+    )),
+    dict(name="commit", title="One commit", keys=("5",), callouts=(
+        ("snapshot ", "before", "What the pinned commit did: its operation, when, and the rows it added and removed."),
+        ("ADDED", "before", "The files it wrote&hellip;"),
+        ("DELETED", "before", "&hellip;and the files it retired. They stay in storage, which is why the earlier commits can still be read."),
+    )),
 )
 
 #: The site's two themes, as Textual themes, so the screenshot matches the page around it.
@@ -47,7 +68,7 @@ THEMES: dict[bool, dict[str, Any]] = {
 }
 
 
-def places(lines: list[str], callouts: tuple[tuple[str, str, str], ...] = CALLOUTS) -> list[list[float]]:
+def places(lines: list[str], callouts: tuple[Callout, ...]) -> list[list[float]]:
     """Each label's centre as (row, column), in the screen's character cells."""
     from rich.cells import cell_len
 
@@ -62,14 +83,20 @@ def places(lines: list[str], callouts: tuple[tuple[str, str, str], ...] = CALLOU
         col = cell_len(line[:at])
         # In the border before the text, or past the end of the phrase it starts: words with
         # single spaces between them, so "read through" is placed after "read through duckdb".
+        if side == "row":
+            # The first text inside the pane's border: "││" is where the catalog meets the pane.
+            box = line.rfind("││", 0, at)
+            start = box + 2 + len(line[box + 2:]) - len(line[box + 2:].lstrip()) if box >= 0 else at
+            found_at.append([row, cell_len(line[:start]) - 1.2])
+            continue
         phrase = re.match(r"\S+(?: \S+)*", line[at:])
         end = col + cell_len(phrase.group(0) if phrase else needle)
         found_at.append([row, col - 1.2 if side == "before" else end + 1.6])
     return found_at
 
 
-async def capture(width: int, height: int, home: Path, dark: bool) -> dict[str, Any]:
-    """The demo table's first screen, as `icelens --demo` opens it."""
+async def capture(width: int, height: int, home: Path, scenes: tuple[dict[str, Any], ...] = SCENES) -> list[dict[str, Any]]:
+    """Each scene of the walk, in both themes: one session, so both show the same snapshot ids."""
     from rich.console import Console
     from textual.theme import Theme
 
@@ -78,30 +105,48 @@ async def capture(width: int, height: int, home: Path, dark: bool) -> dict[str, 
     from icelens.catalog import Lake, sandbox_target
 
     lake = Lake(sandbox_target("demo", home), read_only=True)
-    table = demo.seed(lake).table
-    app = IcelensApp(lake, ident=table)
-    spec = THEMES[dark]
-    app.register_theme(Theme(**spec))
-    app.theme = spec["name"]
+    app = IcelensApp(lake, ident=demo.seed(lake).table)
+    for spec in THEMES.values():
+        app.register_theme(Theme(**spec))
+    app.theme = THEMES[True]["name"]
+    shots = []
     try:
         async with app.run_test(size=(width, height)) as pilot:
-            # Loaded is the table's pane drawn and nothing still loading: the catalog is read in
-            # worker threads, and a fixed wait ends on a half-drawn screen on a busy machine.
-            for _ in range(240):
-                await pilot.pause(0.05)
-                if app._cache and all(worker.is_finished for worker in app.workers):
-                    break
-            await pilot.pause(0.2)
-            console = Console(
-                width=width, height=height, file=io.StringIO(), force_terminal=True,
-                color_system="truecolor", record=True, legacy_windows=False, safe_box=False,
-            )
-            console.print(app.screen._compositor.render_update(full=True))
-            lines = console.export_text(clear=False).splitlines()
-            html = console.export_html(code_format="<style>{stylesheet}</style><pre>{code}</pre>")
+            async def settled() -> None:
+                # Loaded is the pane drawn and nothing still loading: the catalog is read in
+                # worker threads, and a fixed wait ends on a half-drawn screen on a busy machine.
+                for _ in range(240):
+                    await pilot.pause(0.05)
+                    if app._cache and all(worker.is_finished for worker in app.workers):
+                        break
+                await pilot.pause(0.2)
+
+            def draw() -> tuple[list[str], str]:
+                console = Console(
+                    width=width, height=height, file=io.StringIO(), force_terminal=True,
+                    color_system="truecolor", record=True, legacy_windows=False, safe_box=False,
+                )
+                console.print(app.screen._compositor.render_update(full=True))
+                return (console.export_text(clear=False).splitlines(),
+                        console.export_html(code_format="<style>{stylesheet}</style><pre>{code}</pre>"))
+
+            await settled()
+            for scene in scenes:
+                for key in scene["keys"]:
+                    await pilot.press(key)
+                    await settled()
+                shot: dict[str, Any] = {k: scene[k] for k in ("name", "title", "keys")}
+                for theme, dark in (("dark", True), ("light", False)):
+                    app.theme = THEMES[dark]["name"]
+                    await pilot.pause(0.2)
+                    lines, html = draw()
+                    shot[theme] = {"html": html, "text": "\n".join(lines), "places": places(lines, scene["callouts"])}
+                app.theme = THEMES[True]["name"]
+                shot["notes"] = [note for _, _, note in scene["callouts"]]
+                shots.append(shot)
     finally:
         lake.close()
-    return {"html": html, "text": "\n".join(lines), "places": places(lines), "notes": [n for _, _, n in CALLOUTS]}
+    return shots
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -111,15 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     # extension happens to be installed where the site is built.
     sys.modules["duckdb"] = None  # type: ignore[assignment]
 
-    async def both() -> dict[str, Any]:
-        shots = {}
-        for name, dark in (("dark", True), ("light", False)):
-            shutil.rmtree(HOME, ignore_errors=True)
-            shots[name] = await capture(width, height, HOME, dark)
-        return shots
-
+    shutil.rmtree(HOME, ignore_errors=True)
     try:
-        print(json.dumps({"cols": width, "rows": height, **asyncio.run(both())}))
+        print(json.dumps({"cols": width, "rows": height, "scenes": asyncio.run(capture(width, height, HOME))}))
     finally:
         shutil.rmtree(HOME, ignore_errors=True)
     return 0

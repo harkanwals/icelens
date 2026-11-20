@@ -70,8 +70,9 @@ reformatted file buries the change in its diff. `ruff check` is the rule.
 - `src/icelens/app.py`, `welcome.py`, `icelens.tcss`: the Textual UI. `cli.py`: flags and headless
   output. `demo.py`: the demo tables. `terms.py`: the explanations the guide rail shows.
 - `site/`: the website's hand-written pages. `scripts/build_site.py` renders the docs into it,
-  and `scripts/screenshot.py` runs the app on the demo table for the home page's labelled
-  screenshot. `.github/workflows/pages.yml` builds and deploys it on `main`.
+  and `scripts/screenshot.py` drives the app through the demo table for the home page's
+  labelled walk (`SCENES`: the keys each scene presses, and what its labels point at).
+  `.github/workflows/pages.yml` builds and deploys it on `main`.
 - `tests/conftest.py`: the fixtures. `lake` is a SQLite catalog with real history, `v3_lake` the
   same at v3, `attachable` a REST catalog DuckDB can attach (live if configured, local if not),
   `rest_lake` and `rest_sandbox` lakes on top of it.

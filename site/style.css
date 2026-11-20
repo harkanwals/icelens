@@ -557,8 +557,42 @@ main.doc {
   width: 1.4rem; height: 1.4rem; border-radius: 50%;
   background: var(--accent); color: var(--pin-ink); box-shadow: 0 0 0 2px var(--shot-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
   font: 700 0.78rem/1.4rem var(--sans); text-align: center;
+  pointer-events: auto; cursor: default; transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.shot figcaption { margin-top: 1.25rem; }
+.shot-screen .pin.on b { transform: translate(-50%, -50%) scale(1.3); box-shadow: 0 0 0 2px var(--shot-bg), 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
+.scene + .scene { margin-top: 2.5rem; }
+.scene .callouts { margin-top: 1.25rem; }
+.callouts li { transition: color 0.15s ease; }
+.callouts li.on { color: var(--text); }
+
+/* With the tour's script: one scene at a time, chosen from the strip above it. */
+.scenes { display: none; }
+.shot.live .scenes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; margin-bottom: 0.9rem; }
+.shot.live .scene + .scene { margin-top: 0; }
+.scenes [role="tablist"] { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.scenes [role="tab"], .tour-toggle {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.4rem 0.85rem; border: 1px solid var(--border); border-radius: 999px; background: none;
+  color: var(--muted); font: 500 0.88rem var(--sans); cursor: pointer;
+}
+.scenes [role="tab"] .n { font: 700 0.78rem var(--mono); color: var(--accent); }
+.scenes [role="tab"][aria-selected="true"] { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.scenes [role="tab"]:hover, .tour-toggle:hover { color: var(--text); }
+.tour-toggle { font-size: 0.8rem; padding: 0.3rem 0.75rem; }
+/* How long until the next scene: fills while the tour plays. */
+.scenes .progress { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
+.shot.playing [aria-selected="true"] .progress { animation: tour-fill 9s linear forwards; }
+@keyframes tour-fill { to { transform: scaleX(1); } }
+/* Each scene arrives: the screen fades in, then the keys that reached it, then its labels. */
+.shot.live .scene .shot-screen { animation: scene-in 0.35s ease both; }
+.shot.live .scene .pin b { animation: pin-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(0.35s + var(--i) * 0.22s); }
+.shot.live .scene .pressed kbd { animation: key-in 0.3s ease both; animation-delay: calc(0.1s + var(--i) * 0.18s); }
+@keyframes scene-in { from { opacity: 0.25; } }
+@keyframes pin-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } }
+@keyframes key-in { from { opacity: 0; transform: translateY(-0.4rem); } }
+.pressed kbd { display: inline-block; }
+.window .bar .pressed { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; }
+.window .bar .pressed kbd { font-size: 0.75rem; }
 .callouts {
   counter-reset: callout; list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.85rem 1.75rem;

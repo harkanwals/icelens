@@ -760,6 +760,12 @@ class IcelensApp(App[None]):
             return  # the selection moved on while this was loading
         self._cache[key] = pane
         box.update(pane, self.cell_width)
+        if pane_id == "snapshots" and self.snapshot_id is not None and "snapshot id" in pane.data.column_names:
+            # Pinning re-reads every pane, this one included, and a refilled grid starts at the
+            # top: the cursor would leave the commit just pinned for the oldest one.
+            ids = [str(value) for value in pane.data.column("snapshot id").to_pylist()]
+            if str(self.snapshot_id) in ids:
+                box.query_one(Grid).cursor_coordinate = Coordinate(ids.index(str(self.snapshot_id)), 0)
         self.status()
 
     @work(exclusive=True, group="pane")

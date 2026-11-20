@@ -161,10 +161,14 @@ def test_the_build_writes_the_pages(tmp_path):
     home = (out / "index.html").read_text(encoding="utf-8")
     assert "<!--#" not in home and '<header class="site">' in home and '<footer class="site">' in home
     assert "aria-current" not in home
-    # The home page explains the app with a labelled screenshot of it, one label per note, and
-    # runs nothing: the way to try it is on your own machine.
-    callouts = home[home.index('class="callouts"'):]
-    assert 'class="shot"' in home and home.count('class="pin"') == callouts[: callouts.index("</ol>")].count("<li>") == 6
+    # The home page explains the app with a walk through labelled screens of it, one label per
+    # note in every scene, and runs no app: the way to try it is on your own machine.
+    scenes = re.findall(r'<div class="scene" id="scene-([\w-]+)".*?</ol>', home, re.S)
+    assert len(scenes) == home.count('role="tab" id=') == 4
+    for scene in re.findall(r'<div class="scene" .*?</ol>', home, re.S):
+        pins = re.findall(r'class="pin"[^>]*data-n="(\d+)"', scene)
+        notes = re.findall(r'<li data-n="(\d+)"', scene)
+        assert pins == notes and pins == [str(n) for n in range(1, len(pins) + 1)]
     assert "uvx icelens --demo" in home
     assert not any((out / name).exists() for name in ("try.html", "demo.js", "worker.js", "wheels"))
     assert not re.search(r"<script[^>]+src=", home) and "try.html" not in home

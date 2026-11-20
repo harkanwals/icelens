@@ -64,6 +64,25 @@ async def test_enter_on_a_snapshot_pins_it_everywhere(app: IcelensApp) -> None:
         assert app.snapshot_id is None
 
 
+async def test_pinning_a_snapshot_keeps_the_cursor_on_it(app: IcelensApp) -> None:
+    """Every pane re-reads when a snapshot is pinned, Snapshots too, and the cursor stays put."""
+    async with app.run_test() as pilot:
+        await settle(app, pilot)
+        app.open_table("demo.events")
+        await settle(app, pilot)
+        await pilot.press("4")
+        await settle(app, pilot)
+        grid = app.query_one("#grid-snapshots", Grid)
+        grid.focus()
+        await pilot.press("down", "enter")
+        await settle(app, pilot)
+        assert app.snapshot_id == int(grid.source.column("snapshot id")[1].as_py())
+        assert grid.cursor_coordinate.row == 1
+        await pilot.press("comma")  # stepping moves the cursor with the pin
+        await settle(app, pilot)
+        assert grid.cursor_coordinate.row == 0
+
+
 async def test_enter_on_a_file_travels_to_the_snapshot_that_wrote_it(app: IcelensApp) -> None:
     """Files names its snapshot column `added by`, and enter anywhere on the row should follow it."""
     async with app.run_test() as pilot:

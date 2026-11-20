@@ -414,36 +414,113 @@ def footer(prefix: str) -> str:
 # --- The home page's screenshot -----------------------------------------------------------------
 
 
-def screenshot_figure(shot: dict[str, Any]) -> str:
-    """The home page's labelled screenshot: the app's first screen as text, in both themes.
+#: How a key the walk presses is written on the page.
+KEY_LABELS = {"comma": ",", "full_stop": ".", "enter": "Enter"}
 
-    `shot` is `scripts/screenshot.py`'s JSON. The labels sit at the row and
-    column where the text they point at was found, in the screen's own character cells, so they
-    stay on it at any width.
+# The tour: one scene after another until the visitor touches it, then theirs to drive. Nothing
+# moves for someone who asked for reduced motion, or while the figure is off screen or the tab
+# is hidden. Hovering a label or a note lights up the pair.
+TOUR_SCRIPT = """<script>
+(() => {
+  const fig = document.querySelector(".shot[data-tour]");
+  if (!fig) return;
+  const tabs = [...fig.querySelectorAll('[role="tab"]')];
+  const panels = tabs.map((tab) => document.getElementById(tab.getAttribute("aria-controls")));
+  const toggle = fig.querySelector(".tour-toggle");
+  const DWELL = 9000;
+  let at = 0, timer = 0, inView = false;
+  let stopped = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  fig.classList.add("live");
+  const running = () => !stopped && inView && !document.hidden;
+  const schedule = () => {
+    clearTimeout(timer);
+    fig.classList.toggle("playing", running());
+    toggle.textContent = stopped ? "Play the tour" : "Pause";
+    toggle.setAttribute("aria-pressed", String(!stopped));
+    const bar = tabs[at].querySelector(".progress");
+    bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+    if (running()) timer = setTimeout(() => show(at + 1), DWELL);
+  };
+  const show = (i, focus) => {
+    at = (i + tabs.length) % tabs.length;
+    tabs.forEach((tab, k) => {
+      tab.setAttribute("aria-selected", String(k === at));
+      tab.tabIndex = k === at ? 0 : -1;
+      panels[k].hidden = k !== at;
+    });
+    if (focus) tabs[at].focus();
+    schedule();
+  };
+  const stop = () => { if (!stopped) { stopped = true; schedule(); } };
+  tabs.forEach((tab, k) => tab.addEventListener("click", () => { stopped = true; show(k); }));
+  fig.querySelector('[role="tablist"]').addEventListener("keydown", (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (step) { e.preventDefault(); stopped = true; show(at + step, true); }
+  });
+  toggle.addEventListener("click", () => { stopped = !stopped; if (!stopped) show(at + 1); else schedule(); });
+  fig.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tour-toggle")) stop(); });
+  fig.querySelectorAll(".scene").forEach((panel) => panel.addEventListener("pointerenter", stop));
+  fig.addEventListener("pointerover", (e) => {
+    const hit = e.target.closest("[data-n]");
+    const panel = e.target.closest(".scene");
+    if (!panel) return;
+    panel.querySelectorAll("[data-n]").forEach((el) => el.classList.toggle("on", !!hit && el.dataset.n === hit.dataset.n));
+  });
+  fig.addEventListener("pointerleave", () => fig.querySelectorAll("[data-n].on").forEach((el) => el.classList.remove("on")));
+  new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; schedule(); }, { threshold: 0.4 }).observe(fig);
+  document.addEventListener("visibilitychange", schedule);
+  show(0);
+})();
+</script>"""
+
+
+def screenshot_figure(shot: dict[str, Any]) -> str:
+    """The home page's walk through the app: a labelled screen per scene, in both themes.
+
+    `shot` is `scripts/screenshot.py`'s JSON. The labels sit at the row and column where the
+    text they point at was found, in the screen's own character cells, so they stay on it at
+    any width. Without JavaScript the scenes are shown one under another.
     """
-    def screen(theme: str) -> str:
-        match = re.fullmatch(r"<style>(.*)</style><pre>(.*)</pre>", shot[theme]["html"], re.S)
+    def screen(scene: dict[str, Any], theme: str) -> str:
+        match = re.fullmatch(r"<style>(.*)</style><pre>(.*)</pre>", scene[theme]["html"], re.S)
         if match is None:
             raise BuildError("the screenshot is not the HTML it was expected to be")
-        # Rich names its classes r1, r2 ... in each theme alike: each set is kept to its own copy.
-        style = re.sub(r"(^|\n)\.r(\d+) ", rf"\1.shot-{theme} .r\2 ", match.group(1))
-        return f'<style>{style}</style><pre class="shot-{theme}" aria-hidden="true">{match.group(2)}</pre>'
+        # Rich names its classes r1, r2 ... in every screen alike: each set is kept to its own.
+        scope = f"shot-{scene['name']}-{theme}"
+        style = re.sub(r"(^|\n)\.r(\d+) ", rf"\1.{scope} .r\2 ", match.group(1))
+        return f'<style>{style}</style><pre class="shot-{theme} {scope}" aria-hidden="true">{match.group(2)}</pre>'
 
-    places, notes = shot["dark"]["places"], shot["dark"]["notes"]
-    pins = "".join(
-        f'<span class="pin" style="--row:{row};--col:{col}"><b>{n}</b></span>'
-        for n, (row, col) in enumerate(places, 1)
-    )
-    items = "".join(f"<li>{note}</li>" for note in notes)
-    return f"""<figure class="shot">
-      <div class="window">
-        <div class="bar"><i></i><i></i><i></i><span class="title">icelens --demo</span></div>
-        <div class="shot-scroll"><div class="shot-screen" role="img" aria-label="icelens showing the demo table's Overview pane">
-          {screen("dark")}{screen("light")}<div class="pins" aria-hidden="true">{pins}</div>
-        </div></div>
-      </div>
-      <figcaption><ol class="callouts">{items}</ol></figcaption>
-    </figure>"""
+    tabs, panels = [], []
+    for n, scene in enumerate(shot["scenes"], 1):
+        name, title = scene["name"], html.escape(scene["title"])
+        tabs.append(
+            f'<button type="button" role="tab" id="tab-{name}" aria-controls="scene-{name}" aria-selected="false">'
+            f'<span class="n">{n}</span>{title}<i class="progress" aria-hidden="true"></i></button>'
+        )
+        pins = "".join(
+            f'<span class="pin" style="--row:{row};--col:{col};--i:{k}" data-n="{k}"><b>{k}</b></span>'
+            for k, (row, col) in enumerate(scene["dark"]["places"], 1)
+        )
+        keys = "".join(
+            f'<kbd style="--i:{k}">{html.escape(KEY_LABELS.get(str(key), str(key)))}</kbd>' for k, key in enumerate(scene["keys"])
+        )
+        pressed = f'<span class="pressed"><span>pressed</span>{keys}</span>' if keys else ""
+        items = "".join(f'<li data-n="{k}">{note}</li>' for k, note in enumerate(scene["notes"], 1))
+        panels.append(f"""<div class="scene" id="scene-{name}" role="tabpanel" aria-labelledby="tab-{name}">
+        <div class="window">
+          <div class="bar"><i></i><i></i><i></i><span class="title">icelens --demo</span>{pressed}</div>
+          <div class="shot-scroll"><div class="shot-screen" role="img" aria-label="icelens: {title}">
+            {screen(scene, "dark")}{screen(scene, "light")}<div class="pins" aria-hidden="true">{pins}</div>
+          </div></div>
+        </div>
+        <ol class="callouts">{items}</ol>
+      </div>""")
+    return f"""<figure class="shot" data-tour>
+      <div class="scenes"><div role="tablist" aria-label="A walk through icelens">{"".join(tabs)}</div>
+        <button type="button" class="tour-toggle" aria-pressed="true">Pause</button></div>
+      {"".join(panels)}
+    </figure>
+    {TOUR_SCRIPT}"""
 
 
 def fill(page: str, text: str, shot: dict[str, Any] | None = None) -> str:
