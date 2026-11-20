@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import posixpath
 import re
 import shutil
@@ -33,6 +34,20 @@ DOCS = {
     "README.md": ("start.html", "Start"),
     "docs/PLATFORMS.md": ("platforms.html", "Platforms"),
 }
+
+# What a search result or a shared link says about each doc page.
+DESCRIPTIONS = {
+    "docs/GUIDE.md": "Every pane, key and flag in icelens, the terminal app for learning Apache Iceberg and inspecting production Iceberg tables.",
+    "README.md": "Install icelens, open the demo table or your own catalog, and walk a table's snapshots, manifests, files and rows.",
+    "docs/PLATFORMS.md": "Which Iceberg catalogs icelens has been tested with, how to connect to each, and what to do when something fails.",
+}
+
+#: Where the site is served when nothing says otherwise. A shared link's preview needs absolute
+#: URLs, so the deploy that serves the site somewhere else sets ICELENS_SITE_URL to that address.
+DEFAULT_SITE = "https://harkanwals.github.io/icelens"
+
+#: The picture a shared link shows: 1200 by 630, the size every network's large card expects.
+CARD = "og.png"
 
 
 class BuildError(Exception):
@@ -532,12 +547,50 @@ def fill(page: str, text: str, shot: dict[str, Any] | None = None) -> str:
         return header("", (match.group(1) or "").strip())
 
     text = re.sub(r"<!--#header( [\w./-]+)?-->", head, text)
+    title = re.search(r"<title>(.*?)</title>", text, re.S)
+    description = re.search(r'<meta name="description" content="([^"]*)">', text)
+    if title is None or description is None:
+        raise BuildError(f"{page} needs a <title> and a description for its link preview")
+    text = text.replace(
+        "</head>", social(page, html.unescape(title.group(1)), html.unescape(description.group(1))) + "\n</head>", 1,
+    )
     text = text.replace("</head>", THEME_SCRIPT + "\n</head>", 1)
     if "<!--#screenshot-->" in text:
         if shot is None:
             raise BuildError(f"{page} has a screenshot and none was captured")
         text = text.replace("<!--#screenshot-->", screenshot_figure(shot))
     return text.replace("<!--#footer-->", footer(""))
+
+
+def site_url() -> str:
+    return (os.environ.get("ICELENS_SITE_URL") or DEFAULT_SITE).rstrip("/")
+
+
+def social(path: str, title: str, description: str) -> str:
+    """The tags that make a shared link a card: canonical address, Open Graph, and X's own.
+
+    `title` and `description` are plain text; `path` is the page's place under the site root.
+    """
+    site = site_url()
+    url = f"{site}/" if path == "index.html" else f"{site}/{path}"
+    title, description = html.escape(title), html.escape(description)
+    tags = [
+        f'<link rel="canonical" href="{url}">',
+        '<meta property="og:type" content="website">',
+        '<meta property="og:site_name" content="icelens">',
+        f'<meta property="og:title" content="{title}">',
+        f'<meta property="og:description" content="{description}">',
+        f'<meta property="og:url" content="{url}">',
+        f'<meta property="og:image" content="{site}/{CARD}">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        '<meta property="og:image:alt" content="icelens in a terminal, showing a table\'s snapshots">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{title}">',
+        f'<meta name="twitter:description" content="{description}">',
+        f'<meta name="twitter:image" content="{site}/{CARD}">',
+    ]
+    return "\n".join(tags)
 
 
 def doc_page(source: str, text: str) -> str:
@@ -558,6 +611,8 @@ def doc_page(source: str, text: str) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title} · icelens</title>
+<meta name="description" content="{html.escape(DESCRIPTIONS[source])}">
+{social(f"docs/{page}", f"{html.unescape(title)} · icelens", DESCRIPTIONS[source])}
 <link rel="stylesheet" href="../style.css">
 {THEME_SCRIPT}
 </head>

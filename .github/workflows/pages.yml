@@ -1,6 +1,11 @@
 name: pages
 
 # The website, rebuilt from main: the pages, and a screenshot of the app as it is on main.
+#
+# It deploys to GitHub Pages until the repository has a CLOUDFLARE_PROJECT variable, and to that
+# Cloudflare Pages project after, with the CLOUDFLARE_ACCOUNT_ID variable and a
+# CLOUDFLARE_API_TOKEN secret (a token allowed "Cloudflare Pages: Edit" and nothing else).
+# SITE_URL is the address the site is served at, which link previews need in full.
 on:
   push:
     branches: [main]
@@ -17,6 +22,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ICELENS_SITE_URL: ${{ vars.SITE_URL }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
@@ -26,15 +33,24 @@ jobs:
       - run: uv sync --locked --extra dev
       - name: Build the site
         run: uv run python scripts/build_site.py
+      - name: Deploy to Cloudflare Pages
+        if: vars.CLOUDFLARE_PROJECT != ''
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy _site --project-name=${{ vars.CLOUDFLARE_PROJECT }} --branch=main
       # v4, not v3: v3 calls actions/upload-artifact by tag from inside, and the repository
       # requires every action, nested ones included, to be pinned to a commit. v4 leaves hidden
       # files out of the artifact; the only one is .nojekyll, which a workflow deploy never reads.
-      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+      - if: vars.CLOUDFLARE_PROJECT == ''
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
           path: _site
 
   deploy:
     needs: build
+    if: vars.CLOUDFLARE_PROJECT == ''
     runs-on: ubuntu-latest
     permissions:
       pages: write

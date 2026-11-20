@@ -198,3 +198,25 @@ def test_the_build_refuses_the_checkout_itself(capsys):
     assert build_site.main(["--out", str(ROOT)]) == 1
     err = capsys.readouterr().err.strip()
     assert err.startswith("build_site: refusing to build into") and "\n" not in err
+
+
+def test_every_page_is_a_link_preview_at_the_address_it_is_served_from(tmp_path, monkeypatch):
+    # Networks read only absolute URLs, so a site served somewhere new must say so everywhere.
+    monkeypatch.setenv("ICELENS_SITE_URL", "https://icelens.example/")
+    out = tmp_path / "_site"
+    build_site.build(out)
+    card = (out / build_site.CARD).read_bytes()
+    assert card[:8] == b"\x89PNG\r\n\x1a\n"
+    assert (int.from_bytes(card[16:20], "big"), int.from_bytes(card[20:24], "big")) == (1200, 630)
+    for path in ["index.html", *(f"docs/{page}" for page, _ in DOCS.values())]:
+        html = (out / path).read_text(encoding="utf-8")
+        head = html[: html.index("</head>")]
+        url = "https://icelens.example/" + ("" if path == "index.html" else path)
+        assert f'<link rel="canonical" href="{url}">' in head and f'<meta property="og:url" content="{url}">' in head, path
+        assert '<meta property="og:image" content="https://icelens.example/og.png">' in head
+        assert '<meta name="twitter:card" content="summary_large_image">' in head
+        for tag in ("og:title", "og:description", "twitter:title", "twitter:description"):
+            content = re.search(rf'<meta (?:property|name)="{tag}" content="([^"]+)">', head)
+            assert content and content.group(1).strip(), (path, tag)
+        assert re.search(r'<meta name="description" content="[^"]{40,}">', head), path
+        assert "harkanwals.github.io" not in head
