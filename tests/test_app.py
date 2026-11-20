@@ -81,6 +81,23 @@ async def test_pinning_a_snapshot_keeps_the_cursor_on_it(app: IcelensApp) -> Non
         await pilot.press("comma")  # stepping moves the cursor with the pin
         await settle(app, pilot)
         assert grid.cursor_coordinate.row == 0
+        await pilot.press("u", "down", "enter")  # pinned again, this time from the cache
+        await settle(app, pilot)
+        assert grid.cursor_coordinate.row == 1
+
+
+async def test_a_pane_key_pressed_in_a_grid_moves_into_the_new_panes_grid(app: IcelensApp) -> None:
+    async with app.run_test() as pilot:
+        await settle(app, pilot)
+        app.open_table("demo.events")
+        await settle(app, pilot)
+        app.query_one("#grid-overview", Grid).focus()
+        await pilot.press("4")
+        await settle(app, pilot)
+        assert app.focused is app.query_one("#grid-snapshots", Grid)
+        await pilot.press("down")  # and the arrow keys still move a cursor
+        await settle(app, pilot)
+        assert app.query_one("#grid-snapshots", Grid).cursor_coordinate.row == 1
 
 
 async def test_enter_on_a_file_travels_to_the_snapshot_that_wrote_it(app: IcelensApp) -> None:

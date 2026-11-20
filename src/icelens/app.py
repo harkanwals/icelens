@@ -738,6 +738,7 @@ class IcelensApp(App[None]):
         key = (self.ident, pane_id, self.snapshot_id, self.limit, self.where, self.lineage)
         if not force and key in self._cache:
             box.update(self._cache[key], self.cell_width)
+            self._cursor_on_pin(pane_id, self._cache[key], box)
             self.status()
             return
         box.say("loading…")
@@ -760,13 +761,17 @@ class IcelensApp(App[None]):
             return  # the selection moved on while this was loading
         self._cache[key] = pane
         box.update(pane, self.cell_width)
-        if pane_id == "snapshots" and self.snapshot_id is not None and "snapshot id" in pane.data.column_names:
-            # Pinning re-reads every pane, this one included, and a refilled grid starts at the
-            # top: the cursor would leave the commit just pinned for the oldest one.
-            ids = [str(value) for value in pane.data.column("snapshot id").to_pylist()]
-            if str(self.snapshot_id) in ids:
-                box.query_one(Grid).cursor_coordinate = Coordinate(ids.index(str(self.snapshot_id)), 0)
+        self._cursor_on_pin(pane_id, pane, box)
         self.status()
+
+    def _cursor_on_pin(self, pane_id: str, pane: Pane, box: PaneBox) -> None:
+        """Pinning re-reads every pane, Snapshots included, and a refilled grid starts at the top:
+        without this the cursor would leave the commit just pinned for the oldest one."""
+        if pane_id != "snapshots" or self.snapshot_id is None or "snapshot id" not in pane.data.column_names:
+            return
+        ids = [str(value) for value in pane.data.column("snapshot id").to_pylist()]
+        if str(self.snapshot_id) in ids:
+            box.query_one(Grid).cursor_coordinate = Coordinate(ids.index(str(self.snapshot_id)), 0)
 
     @work(exclusive=True, group="pane")
     async def load_catalog_pane(self, pane_id: str) -> None:
@@ -920,7 +925,15 @@ class IcelensApp(App[None]):
         if pane_id not in {pane for pane, _label, _key in self.panes}:
             self.notify("writing needs a sandbox: icelens --sandbox (add --rest for v3)", severity="warning")
             return
+        # A pane key pressed in a grid hides that grid, and a hidden widget loses focus to
+        # nothing: the arrow keys would stop working until Tab. The new pane's grid takes it.
+        in_grid = isinstance(self.focused, Grid)
         self.query_one("#tabs", TabbedContent).active = f"tab-{pane_id}"
+        if in_grid and pane_id not in ("sql", "writer"):
+            grids = self.query(f"#grid-{pane_id}")
+            if grids:
+                grid = grids.first(Grid)
+                self.call_after_refresh(grid.focus)
         if pane_id == "sql":
             self.query_one("#sql", TextArea).focus()
         if pane_id == "writer":
