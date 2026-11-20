@@ -435,10 +435,8 @@ pane shows those.
   filter language is narrower: comparisons, `and`/`or`/`not`, `in`, `is null`, `starts with`.
 - **On the scanning route** the SQL pane sees the tables that existed when it first ran; `r`
   reloads.
-- **Without DuckDB's iceberg extension** (offline, or in the browser) SQL runs over copies of the
+- **Without DuckDB's iceberg extension** (offline, for example) SQL runs over copies of the
   tables, up to 5 million rows each, with no `AT (VERSION => …)`.
-- **The in-browser demo** runs the demo catalog only; see
-  [Platforms](PLATFORMS.md#in-the-browser).
 - **Azure (ADLS):** not supported. PyIceberg 0.12 cannot read an `abfss://` metadata file, so the
   metadata panes fail too.
 - **Windows:** local catalogs and sandboxes do not work yet, and nothing else has been run there.

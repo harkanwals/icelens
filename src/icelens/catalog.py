@@ -1181,7 +1181,7 @@ class Target:
 
     @property
     def catalog_type(self) -> str:
-        """Which dialect this is: rest, glue, sql, hive, dynamodb, in-memory, or unknown.
+        """Which dialect this is: rest, glue, sql, hive, dynamodb, or unknown.
 
         PyIceberg works this out internally and keeps it to itself. icelens needs it in the
         open, because the catalog's type decides how - and whether - DuckDB can reach the
@@ -1191,10 +1191,6 @@ class Target:
         declared = self.properties.get("type", "").strip().lower()
         if declared:
             return declared
-        if self.properties.get("py-catalog-impl") == "icelens.memory.MemoryCatalog":
-            # The in-browser demo's catalog (icelens.memory): PyIceberg forbids naming a type
-            # beside an implementation, so this is the one dialect known by its class.
-            return "in-memory"
         uri = self.uri
         scheme = uri.split("://", 1)[0].lower() if "://" in uri else ""
         if scheme in ("http", "https"):
@@ -1921,7 +1917,7 @@ class Lake:
 
         - `attach`    DuckDB speaks this catalog itself: REST, Glue, S3 Tables.
         - `bridge`    PyIceberg resolves each table to its `metadata.json` and DuckDB scans
-                      that file. This is what gives a Hive, SQL or in-memory catalog the
+                      that file. This is what gives a Hive, SQL or DynamoDB catalog the
                       same rows, the same SQL and the same time travel as a REST one.
         - `pyiceberg` no DuckDB at all: no extension, or nothing it could open.
         """
@@ -1939,8 +1935,8 @@ class Lake:
 
         - `attach`, `bridge`  DuckDB with its iceberg extension, as `mode` describes.
         - `arrow`             DuckDB without it: each table the SQL names is scanned by PyIceberg
-                              and copied in. What Pyodide gets, where DuckDB runs but
-                              extensions.duckdb.org publishes no iceberg extension for it.
+                              and copied in: offline, or wherever DuckDB cannot load the
+                              extension.
         - `none`              no DuckDB module at all, so no SQL.
         """
         mode = self.mode
@@ -2740,8 +2736,8 @@ class Lake:
         if ident in self._arrow_scans and self._arrow_scans[ident] == snapshot:
             return
         # Whole tables are copied, so a big one is refused before it is read rather than after
-        # it has filled the memory. The browser's demo is a few hundred rows; this is for a
-        # desktop whose DuckDB has no iceberg extension, pointed at a real catalog.
+        # it has filled the memory: this route is for a machine whose DuckDB has no iceberg
+        # extension, pointed at a real catalog.
         current = table.metadata.snapshot_by_id(snapshot) if snapshot is not None else None
         summary = current.summary if current is not None else None
         try:

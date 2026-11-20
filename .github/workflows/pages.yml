@@ -1,7 +1,6 @@
 name: pages
 
-# The website, rebuilt from main. The wheel the demo installs is checked under Pyodide before it
-# is published, so a change that breaks the browser build never reaches try.html.
+# The website, rebuilt from main: the pages, and a screenshot of the app as it is on main.
 on:
   push:
     branches: [main]
@@ -24,14 +23,9 @@ jobs:
         with:
           enable-cache: true
           python-version: "3.13"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: tests/pyodide/package-lock.json
       - run: uv sync --locked --extra dev
-      - name: Build the site and check its wheel under Pyodide
-        run: make test-browser
+      - name: Build the site
+        run: uv run python scripts/build_site.py
       # v4, not v3: v3 calls actions/upload-artifact by tag from inside, and the repository
       # requires every action, nested ones included, to be pinned to a commit. v4 leaves hidden
       # files out of the artifact; the only one is .nojekyll, which a workflow deploy never reads.

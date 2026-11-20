@@ -35,8 +35,7 @@ except uv (with `pip --user`, if uv is missing) and DuckDB's extensions (into `~
 | the suite against them | `set -a; . tests/compose/live.env; set +a; uv run pytest -q` | `make test-live` |
 | stop them | `docker compose -f tests/compose/stack.yml down -v` | `make live-down` |
 | redraw the TUI snapshots after an intended change | `uv run pytest -q tests/test_snapshots.py --snapshot-update` | `make snapshots` |
-| build the website into `_site/` (pages, docs, the demo's wheel; with Node, its compiled modules and prebuilt demo) | `python3 scripts/build_site.py` | `make site` |
-| the built wheel under Pyodide in Node, as the site's demo runs it (needs Node) | | `make test-browser` |
+| build the website into `_site/` (pages, docs, the home page's screenshot) | `python3 scripts/build_site.py` | `make site` |
 | run the app on a throwaway catalog | `uv run icelens --demo` (`--v3` for format-version 3) | |
 | a throwaway catalog for another engine | `uv run icelens --demo --v3 --serve` (prints how to connect) | |
 
@@ -70,13 +69,9 @@ reformatted file buries the change in its diff. `ruff check` is the rule.
 - `src/icelens/trace.py`: `--trace`, and the wrapper that times DuckDB statements while it is on.
 - `src/icelens/app.py`, `welcome.py`, `icelens.tcss`: the Textual UI. `cli.py`: flags and headless
   output. `demo.py`: the demo tables. `terms.py`: the explanations the guide rail shows.
-- `src/icelens/browser.py`: icelens in a web page under Pyodide - the Textual driver xterm.js
-  talks to, and the shims Pyodide needs (no threads, no `pyarrow._s3fs`). `memory.py`: the
-  in-memory catalog the browser's demo uses instead of SQLite. `site/`: the website;
-  `site/worker.js` runs icelens in a Web Worker, `site/loader.mjs` loads Python the same way for
-  it and for `tests/pyodide/`, and `site/pyodide.json` says what is loaded when. `bytecode.py`: the demo's modules, compiled
-  at build time by `tests/pyodide/prebuild.mjs`, which also writes the demo table and the preview. `scripts/build_site.py` renders the docs and builds the
-  wheel; `.github/workflows/pages.yml` checks that wheel under Pyodide and deploys on `main`.
+- `site/`: the website's hand-written pages. `scripts/build_site.py` renders the docs into it,
+  and `scripts/screenshot.py` runs the app on the demo table for the home page's labelled
+  screenshot. `.github/workflows/pages.yml` builds and deploys it on `main`.
 - `tests/conftest.py`: the fixtures. `lake` is a SQLite catalog with real history, `v3_lake` the
   same at v3, `attachable` a REST catalog DuckDB can attach (live if configured, local if not),
   `rest_lake` and `rest_sandbox` lakes on top of it.

@@ -7,7 +7,6 @@
 <meta name="description" content="icelens is a terminal browser for Apache Iceberg catalogs: snapshots, manifests, files and rows, with every pane pinned to the snapshot you pick.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%230a7ea4' d='M16 4 21.5 13h-11z'/%3E%3Cpath fill='%230a7ea4' opacity='.4' d='M8.5 18h15l-3 9.5h-9z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
-<!--#demo-head-->
 </head>
 <body>
 <!--#header-->
@@ -19,18 +18,7 @@
     <p class="lede"><code>SELECT *</code> shows you the tip. icelens shows what is under it: the
     snapshots, the manifests, the data and delete files, and the rows, <strong>as of any snapshot
     you pick</strong>.</p>
-    <div class="hero-demo">
-      <ul class="keys" aria-label="Keys">
-        <li>Start the demo, then:</li>
-        <li><kbd>1</kbd>&ndash;<kbd>9</kbd> <kbd>0</kbd> panes</li>
-        <li><kbd>&uarr;</kbd><kbd>&darr;</kbd> move</li>
-        <li><kbd>Enter</kbd> pin a snapshot</li>
-        <li><kbd>g</kbd> guide</li>
-        <li><kbd>?</kbd> all keys</li>
-        <li><kbd>Esc</kbd><kbd>Esc</kbd> leave the terminal</li>
-      </ul>
-      <!--#demo-->
-    </div>
+    <!--#screenshot-->
     <div class="actions after-demo">
       <a class="button" href="#install">Install</a>
       <a class="button ghost" href="docs/index.html">Read the guide</a>
@@ -195,17 +183,16 @@ icelens --demo               # a local catalog worth opening</code></pre>
 
   <section class="section final">
     <div class="inner narrow">
-      <h2>Walk a table in your browser.</h2>
-      <p>The demo is the real icelens, running in your tab: one table, five commits, nothing sent
-      anywhere.</p>
+      <h2>Try it on the demo table.</h2>
+      <p>One command, nothing to configure: a local catalog with one table and five commits.</p>
+<pre><code>uvx icelens --demo</code></pre>
       <div class="actions">
-        <a class="button" href="try.html">Open it full screen &rarr;</a>
+        <a class="button" href="#install">Install</a>
         <a class="button ghost" href="docs/index.html">Read the guide</a>
       </div>
     </div>
   </section>
 </main>
 <!--#footer-->
-<!--#demo-scripts-->
 </body>
 </html>

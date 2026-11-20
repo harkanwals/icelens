@@ -1,4 +1,4 @@
-"""The website build: the Markdown renderer, the pages it writes, and (when asked) the wheel.
+"""The website build: the Markdown renderer, and the pages it writes.
 
 The renderer is ours rather than a dependency, so these hold it to the constructs the docs use
 and to the one rule that matters on a public page: text from a Markdown file is never markup.
@@ -6,8 +6,6 @@ and to the one rule that matters on a public page: text from a Markdown file is 
 
 from __future__ import annotations
 
-import json
-import os
 import re
 import sys
 from html.parser import HTMLParser
@@ -151,7 +149,7 @@ def test_every_doc_renders_to_safe_html(source):
 
 def test_the_build_writes_the_pages(tmp_path):
     out = tmp_path / "_site"
-    made = build_site.build(out, wheel=False)
+    made = build_site.build(out)
     assert (out / "index.html").is_file() and (out / "style.css").is_file()
     assert (out / ".nojekyll").is_file()
     for page, _ in DOCS.values():
@@ -159,49 +157,40 @@ def test_the_build_writes_the_pages(tmp_path):
         assert re.search(r'<link rel="stylesheet" href="\.\./style\.css\?v=[0-9a-f]{12}">', html)
         assert '<header class="site">' in html
         assert f"docs/{page}" in made
-    for page in ("index.html", "try.html"):
-        # The hand-written pages get the same header and footer as the docs, filled in at build.
-        html = (out / page).read_text(encoding="utf-8")
-        assert "<!--#" not in html and '<header class="site">' in html and '<footer class="site">' in html
-    assert 'class="pill" href="try.html" aria-current="page"' in (out / "try.html").read_text(encoding="utf-8")
-    assert "aria-current" not in (out / "index.html").read_text(encoding="utf-8")
-    # Every reference to a page's scripts and stylesheet names this build, so a browser holding
-    # an earlier build's worker.js cannot pair it with this build's demo.js.
-    for path in [*out.glob("*.html"), *out.glob("docs/*.html"), out / "demo.js", out / "worker.js"]:
+    # The hand-written page gets the same header and footer as the docs, filled in at build.
+    home = (out / "index.html").read_text(encoding="utf-8")
+    assert "<!--#" not in home and '<header class="site">' in home and '<footer class="site">' in home
+    assert "aria-current" not in home
+    # The home page explains the app with a labelled screenshot of it, one label per note, and
+    # runs nothing: the way to try it is on your own machine.
+    callouts = home[home.index('class="callouts"'):]
+    assert 'class="shot"' in home and home.count('class="pin"') == callouts[: callouts.index("</ol>")].count("<li>") == 6
+    assert "uvx icelens --demo" in home
+    assert not any((out / name).exists() for name in ("try.html", "demo.js", "worker.js", "wheels"))
+    assert not re.search(r"<script[^>]+src=", home) and "try.html" not in home
+    # Every reference to the stylesheet names this build, so a browser holding an earlier one
+    # does not pair it with this build's pages.
+    for path in [*out.glob("*.html"), *out.glob("docs/*.html")]:
         text = path.read_text(encoding="utf-8")
         for name in build_site.STAMPED:
             assert not re.search(rf"""["'](\.\.?/)?{re.escape(name)}["']""", text), (path.name, name)
-    assert '"./loader.mjs?v=' in (out / "worker.js").read_text(encoding="utf-8")
-    # A script or stylesheet from another origin runs with this one's authority, so each carries
-    # the hash of the bytes it is meant to be.
+    # A stylesheet from another origin runs with this one's authority, so each carries the hash of
+    # the bytes it is meant to be.
     for path in [*out.glob("*.html"), *out.glob("docs/*.html")]:
         html = path.read_text(encoding="utf-8")
         for tag in re.findall(r"<script[^>]+src=\"https?://[^>]*>|<link[^>]+rel=\"stylesheet\"[^>]+href=\"https?://[^>]*>", html):
             assert re.search(r'integrity="sha384-[A-Za-z0-9+/]{64}"', tag) and 'crossorigin="anonymous"' in tag, (path.name, tag)
     # A rebuild replaces a previous build; anything else in the way is refused.
-    build_site.build(out, wheel=False)
+    build_site.build(out)
     other = tmp_path / "other"
     other.mkdir()
     (other / "keep.txt").write_text("mine")
     with pytest.raises(build_site.BuildError, match="not a previous build"):
-        build_site.build(other, wheel=False)
+        build_site.build(other)
     assert (other / "keep.txt").read_text() == "mine"
 
 
 def test_the_build_refuses_the_checkout_itself(capsys):
-    assert build_site.main(["--out", str(ROOT), "--no-wheel"]) == 1
+    assert build_site.main(["--out", str(ROOT)]) == 1
     err = capsys.readouterr().err.strip()
     assert err.startswith("build_site: refusing to build into") and "\n" not in err
-
-
-@pytest.mark.packaging
-@pytest.mark.slow
-@pytest.mark.skipif(os.environ.get("ICELENS_TEST_PACKAGING") != "1", reason="builds the wheel: set ICELENS_TEST_PACKAGING=1")
-def test_the_build_ships_the_wheel_the_demo_installs(tmp_path):
-    out = tmp_path / "_site"
-    assert build_site.main(["--out", str(out)]) == 0
-    frame = json.loads((out / "first-frame.json").read_text())
-    assert (frame["cols"], frame["rows"]) == (120, 36) and "demo.orders" in frame["ansi"]
-    latest = json.loads((out / "wheels" / "latest.json").read_text())
-    assert re.fullmatch(r"[0-9a-f]{16}/icelens-[^/]+-py3-none-any\.whl", latest["wheel"])
-    assert (out / "wheels" / latest["wheel"]).is_file()

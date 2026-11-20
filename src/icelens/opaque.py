@@ -34,8 +34,7 @@ def install() -> None:
     Idempotent, and cheap after the first call. It patches the one place PyIceberg turns a type
     string into a type - `IcebergType.handle_primitive_type`, which `NestedField` calls for
     every field, list element and map value - and only for strings it would otherwise refuse.
-    Called from `Lake`, not at import: importing PyIceberg costs startup time, which the browser
-    build in particular does not have to spare.
+    Called from `Lake`, not at import: importing PyIceberg costs startup time.
     """
     global _installed, _opaque
     if _installed:

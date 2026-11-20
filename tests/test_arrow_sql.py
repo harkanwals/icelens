@@ -1,7 +1,7 @@
 """SQL where DuckDB runs but cannot load its iceberg extension: the `arrow` route.
 
-That is the browser: Pyodide has DuckDB, and extensions.duckdb.org publishes no iceberg extension
-for it. So each table a query names is scanned by PyIceberg and copied into a plain DuckDB under
+That is a machine offline, or one where DuckDB cannot load the extension. Each table a query
+names is scanned by PyIceberg and copied into a plain DuckDB under
 the name the other routes give it. Everything here runs with the extensions withheld the way
 `tests/offline.py` withholds them - DuckDB pointed at empty extension directories - so it runs,
 and means the same thing, on every machine.

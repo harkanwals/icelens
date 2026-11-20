@@ -4,8 +4,7 @@ A terminal browser for Apache Iceberg catalogs. Point it at a catalog and walk w
 table actually is - snapshots, the manifest list, manifests, data and delete files - and the rows
 themselves. Pick a snapshot and every pane follows you there.
 
-[Try it in your browser](https://harkanwals.github.io/icelens/try.html): the real icelens on a
-demo catalog, with nothing to install.
+Try it on a demo table, with nothing to configure: `uvx icelens --demo`.
 
 ## Install
 

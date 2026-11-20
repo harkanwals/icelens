@@ -17,7 +17,6 @@ to connect to each, and what to do when something goes wrong.
 | Nessie | Untested. |
 | Anything on Azure storage (`abfss://`) | **Not yet.** The metadata panes fail as well as the rows. |
 | Local catalogs on Windows | **Not yet.** PyIceberg cannot open a `file:///C:/…` path. |
-| In your browser | **The demo catalog only.** See [In the browser](#in-the-browser). |
 
 "Should work" means the code follows the vendor's documentation and passes its tests, but has
 not been run against the real service. If you try one, please open an issue saying what happened.
@@ -113,20 +112,3 @@ Start with the status bar: it says how rows are being read, and why.
 
 To try icelens with another engine, `icelens --demo --v3 --serve` starts a throwaway catalog and
 prints what PyIceberg and DuckDB need to connect to it.
-
-## In the browser
-
-The [demo](https://harkanwals.github.io/icelens/try.html) is the real icelens, running in your tab on a small demo catalog.
-
-- **The demo catalog only.** The browser cannot reach your catalogs, and nothing you do is sent
-  anywhere.
-- **The first visit downloads about 29 MB**, plus 8.5 MB for the SQL pane. Later visits use the
-  browser's cache. The home page, phones and connections in data-saver mode get a button, so
-  nothing is downloaded unless you ask.
-- **It uses about 1 GB of memory while it runs.** It stops itself, and frees that memory, after
-  a minute in a background tab or ten minutes unused. A button starts it again.
-- **It is ready in about 4 to 5 seconds** on a fast connection, and in under 4 on a return visit. Until
-  then, the app's first screen is shown dimmed, and keys you type are kept.
-- **Tested in Chrome.** Firefox, Safari and phones have not been tried.
-- **Reading only.** Writing needs DuckDB extensions the browser does not have, and says so.
-- **Keys:** click the terminal to use it; press `Esc` twice to leave it.

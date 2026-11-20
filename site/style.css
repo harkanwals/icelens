@@ -1,5 +1,5 @@
-/* The one stylesheet for every page: the landing page, the rendered docs and try.html.
-   No web fonts: system faces load at once, and the demo page is waiting on Python already.
+/* The one stylesheet for every page: the landing page and the rendered docs.
+   No web fonts: system faces load at once.
    Light and dark from prefers-color-scheme; colours are tokens here and nowhere else. */
 
 :root {
@@ -24,11 +24,6 @@
   --water-deep: #8cc6e0;
   --ice: #ffffff;
   --shadow: 0 1px 2px rgba(15, 27, 38, 0.05), 0 8px 24px rgba(15, 27, 38, 0.06);
-  /* The live demo follows the theme; these match the Textual themes in icelens/browser.py. */
-  --demo-bg: #f6f9fb;
-  --demo-bar: #e9f0f5;
-  --demo-border: #d0dce6;
-  --demo-muted: #52677a;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --measure: 46rem;
@@ -63,10 +58,6 @@
     --water-deep: #06202e;
     --ice: #dff4fc;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.25);
-    --demo-bg: #0b141c;
-    --demo-bar: #0f1a24;
-    --demo-border: #1f2d3a;
-    --demo-muted: #8ea2b4;
     color-scheme: dark;
   }
 }
@@ -93,10 +84,6 @@
   --water-deep: #06202e;
   --ice: #dff4fc;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.25);
-  --demo-bg: #0b141c;
-  --demo-bar: #0f1a24;
-  --demo-border: #1f2d3a;
-  --demo-muted: #8ea2b4;
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -552,128 +539,48 @@ main.doc {
 .prose h2[id], .prose h3[id] { scroll-margin-top: 5rem; }
 .source { font-size: 0.85rem; color: var(--muted); }
 
-/* --- The live demo (try.html). The terminal needs a height of its own: xterm.js's fit addon
-   sizes the grid to its box, and an unsized box would give Textual a 24-row screen. */
-
-main.demo { max-width: 104rem; padding-top: 1.25rem; padding-bottom: 2rem; }
-/* The demo page is wider than the others; its header lines up with it. */
-body.try .site-nav { max-width: 104rem; }
-.try-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 2rem; margin-bottom: 1rem; }
-.try-head h1 { margin: 0; font-size: 1.6rem; }
-.try-head .lede { margin: 0.2rem 0 0; color: var(--muted); max-width: 52rem; font-size: 0.95rem; }
-.keys { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.85rem; color: var(--muted); margin: 0; padding: 0; list-style: none; }
-.keys li + li { margin-top: 0; }
-
-.window.live { background: var(--demo-bg); border-color: var(--demo-border); text-align: left; }
-.window.live .bar { background: var(--demo-bar); border-color: var(--demo-border); color: var(--demo-muted); }
-.window.live .bar i { background: var(--demo-border); }
-.bar-link { margin-left: auto; color: var(--demo-muted); text-decoration: none; white-space: nowrap; }
-.bar-link:hover { color: var(--accent); }
-
-/* The loading card, over the dimmed preview. Clicks go through it to the terminal, so a visitor
-   can focus it and type while Python loads; only the button takes them. */
-.stage { position: relative; }
-/* The terminal's own cursor is the app's; this says the keyboard is in it. */
-.terminal:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
-.boot {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  pointer-events: none;
-  transition: opacity 0.45s ease, visibility 0s linear 0s;
+/* The home page's labelled screenshot. The screen is 120 columns of text: its font is sized to
+   the box (1ch is 0.6em in these fonts, so 120ch is 72em), and each label sits at the row and
+   column of the text it points at, in the same character units. */
+.shot { --shot-bg: #f6f9fb; --pin-ink: var(--accent-text); max-width: var(--wide); margin: 0 auto; text-align: left; }
+.shot-scroll { overflow-x: auto; }
+.shot-screen { position: relative; container-type: inline-size; min-width: 40rem; background: var(--shot-bg); }
+.shot-screen pre, .shot-screen .pins, .shot-screen .pin {
+  font-family: var(--mono); font-size: 1.36cqw; line-height: 1.2; letter-spacing: 0;
 }
-.boot.gone { opacity: 0; visibility: hidden; transition: opacity 0.45s ease, visibility 0s linear 0.45s; }
-.boot-card {
-  width: min(25rem, 100%);
-  padding: 1.4rem 1.5rem 1.2rem;
-  border: 1px solid var(--demo-border);
-  border-radius: 16px;
-  background: var(--demo-bg);
-  background: color-mix(in srgb, var(--demo-bg) 88%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: var(--shadow);
-  text-align: center;
-  color: var(--text);
+.shot-screen pre { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; white-space: pre; overflow: hidden; }
+.shot-screen pre.shot-dark { display: none; }
+.shot-screen .pins { position: absolute; inset: 0; pointer-events: none; }
+.shot-screen .pin { position: absolute; left: calc(var(--col) * 1ch); top: calc((var(--row) + 0.5) * 1.2em); }
+.shot-screen .pin b {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 1.4rem; height: 1.4rem; border-radius: 50%;
+  background: var(--accent); color: var(--pin-ink); box-shadow: 0 0 0 2px var(--shot-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
+  font: 700 0.78rem/1.4rem var(--sans); text-align: center;
 }
-.boot-card .button { pointer-events: auto; margin: 0.4rem 0 0.2rem; }
-.boot-mark { width: 7.5rem; height: 5rem; display: block; margin: 0 auto 0.4rem; overflow: hidden; }
-.boot-mark .tip { fill: var(--accent); }
-.boot-mark .below { fill: var(--accent); opacity: 0.28; }
-.boot-mark .wave { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linecap: round; animation: wave 2.4s linear infinite; }
-.boot-mark .berg { animation: bob 3.2s ease-in-out infinite alternate; transform-origin: 60px 40px; }
-@keyframes wave { to { transform: translateX(60px); } }
-@keyframes bob { from { transform: translateY(-1.5px) rotate(-1.5deg); } to { transform: translateY(2px) rotate(1.5deg); } }
-.boot.waiting .boot-mark .berg, .boot.waiting .boot-mark .wave { animation-play-state: paused; }
-.boot-label { margin: 0 0 0.6rem; font: 600 0.95rem var(--sans); }
-.boot progress {
-  width: 100%;
-  height: 0.4rem;
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
-  border-radius: 999px;
-  background: var(--demo-border);
-  overflow: hidden;
-  display: block;
+.shot figcaption { margin-top: 1.25rem; }
+.callouts {
+  counter-reset: callout; list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.85rem 1.75rem;
+  font-size: 0.92rem; color: var(--muted);
 }
-.boot progress[hidden] { display: none; }
-.boot progress::-webkit-progress-bar { background: var(--demo-border); }
-.boot progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; transition: width 0.4s ease; }
-.boot progress::-moz-progress-bar { background: var(--accent); }
-.boot-steps {
-  list-style: none;
-  margin: 0.75rem 0 0;
-  padding: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font: 0.72rem var(--mono);
-  color: var(--demo-muted);
+.callouts li { counter-increment: callout; position: relative; padding-left: 2.1rem; margin: 0; }
+.callouts li::before {
+  content: counter(callout); position: absolute; left: 0; top: 0.05rem;
+  width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--accent); color: var(--pin-ink);
+  font: 700 0.78rem/1.4rem var(--sans); text-align: center;
 }
-.boot-steps li { margin: 0; display: flex; align-items: center; gap: 0.35rem; }
-.boot-steps li::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  border: 1.5px solid currentColor;
-  flex: none;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .shot-screen pre.shot-dark { display: block; }
+  :root:not([data-theme="light"]) .shot-screen pre.shot-light { display: none; }
+  :root:not([data-theme="light"]) .shot { --shot-bg: #0b141c; --pin-ink: #0b141c; }
 }
-.boot-steps li.active { color: var(--accent); }
-.boot-steps li.active::before { background: var(--accent); border-color: var(--accent); animation: pulse 1.1s ease-in-out infinite alternate; }
-.boot-steps li.done { color: var(--text); }
-.boot-steps li.done::before { background: var(--text); border-color: var(--text); }
-@keyframes pulse { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } to { box-shadow: 0 0 0 4px transparent; } }
-.boot-fine { margin: 0.8rem 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--demo-muted); }
-.boot.waiting .boot-steps { display: none; }
-
-/* The demo in the home page's hero: as wide as the content, a good screenful tall. */
-.hero-demo { max-width: var(--wide); margin: 0 auto; text-align: left; }
-.hero-demo .keys { justify-content: center; margin-bottom: 0.75rem; }
-.hero-demo .terminal { height: clamp(24rem, 68vh, 44rem); }
+:root[data-theme="dark"] .shot-screen pre.shot-dark { display: block; }
+:root[data-theme="dark"] .shot-screen pre.shot-light { display: none; }
+:root[data-theme="dark"] .shot { --shot-bg: #0b141c; --pin-ink: #0b141c; }
 .hero .after-demo { margin: 2rem 0 4.5rem; }
 .waterline-section { padding-bottom: 0; overflow: hidden; }
 .center { text-align: center; }
-
-/* As much of the screen as is left under the header and the title row: the demo is the page. */
-.terminal {
-  position: relative;
-  /* content-box: xterm.js's fit addon reads this box's width as the room for columns, and with
-     the padding counted in, it asks for two more than fit and the app's right border is cut. */
-  box-sizing: content-box;
-  height: max(25rem, calc(100vh - 13.5rem)); /* where svh is unknown */
-  height: max(25rem, calc(100svh - 13.5rem));
-  background: var(--demo-bg);
-  padding: 8px 10px;
-  overflow: hidden;
-}
-/* The captured first frame, while Python loads: plainly not yet the live app. */
-.terminal.preview .xterm { opacity: 0.4; filter: saturate(0.5) blur(0.4px); transform-origin: 0 0; }
-.status { color: var(--muted); font-size: 0.92rem; margin: 0.9rem 0 0; }
-.status[hidden] { display: none; }
 
 /* --- Narrow screens */
 
@@ -703,9 +610,6 @@ body.try .site-nav { max-width: 104rem; }
   .berg .tip { width: 85%; }
   pre.term { font-size: 0.7rem; }
   footer.site .cols { grid-template-columns: minmax(0, 1fr); }
-  .hero-demo .terminal { height: 26rem; }
-  .keys { display: none; } /* no keyboard to press them with */
-  .boot-fine { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -713,8 +617,8 @@ body.try .site-nav { max-width: 104rem; }
   * { transition: none !important; animation: none !important; }
 }
 
-/* On paper the demo is a blank box and the buttons white on white. */
+/* On paper the buttons are white on white. */
 @media print {
-  header.site, .theme-toggle, .hero-demo, .demo-window, .boot, .status, .actions { display: none !important; }
+  header.site, .theme-toggle, .actions { display: none !important; }
   body { background: #fff; color: #000; }
 }

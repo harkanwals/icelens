@@ -1,9 +1,0 @@
-{
-  "name": "icelens-pyodide-check",
-  "private": true,
-  "description": "Runs the built icelens wheel under Pyodide in Node, as the site's Web Worker does. Keep the version equal to site/pyodide.json; run.mjs refuses to run if they differ.",
-  "type": "module",
-  "dependencies": {
-    "pyodide": "314.0.7"
-  }
-}

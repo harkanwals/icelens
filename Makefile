@@ -6,7 +6,7 @@ ARGS ?=
 COMPOSE ?= docker compose -f tests/compose/stack.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help setup check lint typecheck test test-offline test-live live-up live-down cov package snapshots site test-browser
+.PHONY: help setup check lint typecheck test test-offline test-live live-up live-down cov package snapshots site
 
 help: ## list the targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  %-13s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -46,12 +46,5 @@ package: ## build the sdist and wheel, install the wheel in a fresh venv, run it
 snapshots: ## redraw tests/snapshots/ after an intended change to a screen; review the diff
 	$(UV) run pytest -q tests/test_snapshots.py --snapshot-update
 
-site: ## the website in _site/: site/, the docs as pages, and the wheel the in-browser demo installs
+site: ## the website in _site/: site/, the docs as pages, and the home page's screenshot
 	python3 scripts/build_site.py $(ARGS)
-	@# The demo files, preview and compiled modules are made by Pyodide's own Python: needs Node.
-	@if [ ! -f _site/wheels/latest.json ]; then :; \
-	elif command -v node >/dev/null; then cd tests/pyodide && { [ node_modules -nt package-lock.json ] || npm ci --silent; } && node prebuild.mjs ../../_site; \
-	else echo "no Node: _site has no prebuilt demo or compiled modules; the page builds both as it starts"; fi
-
-test-browser: site ## the built wheel under Pyodide in Node, as the site's demo runs it (needs Node)
-	cd tests/pyodide && { [ node_modules -nt package-lock.json ] || npm ci --silent; } && node run.mjs ../../_site

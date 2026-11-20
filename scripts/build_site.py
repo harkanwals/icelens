@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Build the website GitHub Pages serves: `python3 scripts/build_site.py [--out _site]`.
 
-The site is hand-written HTML in `site/`, plus the repository's Markdown rendered into pages and
-the icelens wheel the in-browser demo installs. Standard library only, so the Pages workflow needs
-nothing but Python and uv, and the Markdown renderer is the small one below rather than a
+The site is hand-written HTML in `site/`, the repository's Markdown rendered into pages, and the
+home page's screenshot of the app (`scripts/screenshot.py`). Standard library only, so the Pages
+workflow needs nothing but Python and uv, and the Markdown renderer is the small one below rather than a
 dependency: it handles what README.md and docs/ actually use, and escapes everything, so a
 `<script>` written in a doc arrives as text.
 """
@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "https://github.com/harkanwals/icelens"
@@ -359,7 +360,7 @@ def header(prefix: str, current: str = "") -> str:
         items.append(f'      <li><a href="{prefix}{href}"{CURRENT if href == current else ""}>{label}</a></li>')
     items.append(f'      <li><a href="{REPO}">GitHub</a></li>')
     items.append(f"      <li>{TOGGLE}</li>")
-    items.append(f'      <li><a class="pill" href="{prefix}try.html"{CURRENT if current == "try.html" else ""}>Try it</a></li>')
+    items.append(f'      <li><a class="pill" href="{prefix}index.html#install">Install</a></li>')
     return (
         '<header class="site">\n'
         '  <nav class="site-nav" aria-label="Site">\n'
@@ -375,12 +376,11 @@ def footer(prefix: str) -> str:
     def links(pairs: list[tuple[str, str]]) -> str:
         return "\n".join(f'        <li><a href="{href}">{label}</a></li>' for href, label in pairs)
 
-    use = [(f"{prefix}try.html", "Try it in your browser"), (f"{prefix}index.html#install", "Install"),
-           (f"{prefix}docs/index.html", "The guide"), (REPO, "Source on GitHub")]
+    use = [(f"{prefix}index.html#install", "Install"), (f"{prefix}docs/index.html", "The guide"),
+           (REPO, "Source on GitHub")]
     docs = [(f"{prefix}docs/start.html", "Start"), (f"{prefix}docs/platforms.html", "Platforms")]
     built = [("https://iceberg.apache.org", "Apache Iceberg"), ("https://py.iceberg.apache.org", "PyIceberg"),
-             ("https://duckdb.org", "DuckDB"), ("https://textual.textualize.io", "Textual"),
-             ("https://pyodide.org", "Pyodide")]
+             ("https://duckdb.org", "DuckDB"), ("https://textual.textualize.io", "Textual")]
     return f"""<footer class="site">
   <div class="cols">
     <div>
@@ -411,91 +411,55 @@ def footer(prefix: str) -> str:
 </footer>"""
 
 
-# --- The live demo, on the home page and full screen on try.html ---------------------------------
-
-# In <head>, before anything else is fetched: the worker starts loading Python the moment it
-# exists. Only on try.html, the page somebody opens to run the demo: Python in a tab is a 29 MB
-# download and about 1 GB of memory, and the home page is mostly read. Nor on a phone or a
-# connection that says it is slow or metered. Those get the preview and a button. demo.js
-# replays whatever the worker said before it was listening.
-DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" integrity="sha384-8Xk9wy/gzEDUKrXtrmCFa2bBuK3BpjpDuL/p0SeKQX19Khl/M+lHOgD/CyYf7efP" crossorigin="anonymous">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://files.pythonhosted.org" crossorigin>
-<link rel="preload" href="first-frame.json" as="fetch" crossorigin>
-<script>
-  (() => {
-    const link = navigator.connection || {};
-    const slow = link.saveData || /(^|-)2g$|^3g$/.test(link.effectiveType || "");
-    const asked = /(^|\\/)try(\\.html)?$/.test(location.pathname);
-    const auto = asked && !slow && matchMedia("(min-width: 760px)").matches;
-    window.icelens = { early: [], auto, worker: null };
-    if (!auto) return;
-    try {
-      window.icelens.worker = new Worker("worker.js", { type: "module" });
-      window.icelens.worker.onmessage = (event) => window.icelens.early.push(event);
-      // A worker that fails to load says so before demo.js is listening: kept like a message.
-      window.icelens.worker.onerror = () =>
-        window.icelens.early.push({ data: { type: "error", message: "the worker could not start" } });
-    } catch (err) {
-      window.icelens.worker = null;
-    }
-  })();
-</script>"""
-
-# Pinned by hash as well as version: a CDN that served other bytes would otherwise run them on
-# this origin. Each hash is of the file in the npm tarball, which is what jsDelivr serves.
-DEMO_SCRIPTS = """<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js" integrity="sha384-M169f14mRZOXm3hD/v2Ti0ThIT/RnAQagXA9nlE15yHAtrW19gdePJh/HaTzUOe/" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js" integrity="sha384-iF+jqbuti4XlB64clWgFWYEscb+UnSRv3VgVikGYZu+otNFnSHr7y7NcKfBnGizn" crossorigin="anonymous"></script>
-<script src="demo.js"></script>"""
-
-# The loading card: an iceberg riding a moving waterline, the four stages the worker reports,
-# and what is happening in words. It sits over the dimmed preview, and lets clicks through.
-BOOT_MARK = (
-    '<svg class="boot-mark" viewBox="0 0 120 80" aria-hidden="true">'
-    '<g class="berg"><path class="tip" d="M60 8 74 32H46z"/>'
-    '<path class="below" d="M40 40h40l-8 30H48z"/></g>'
-    '<path class="wave" d="M-60 36q15-6 30 0t30 0 30 0 30 0 30 0 30 0 30 0 30 0"/>'
-    "</svg>"
-)
+# --- The home page's screenshot -----------------------------------------------------------------
 
 
-def demo(full_screen_link: bool) -> str:
-    """The demo's window: terminal, loading card, and the notes under it."""
-    link = '<a class="bar-link" href="try.html">Full screen &nearr;</a>' if full_screen_link else ""
-    steps = "".join(f"<li>{name}</li>" for name in ("Python", "Packages", "Demo table", "icelens"))
-    return f"""<div class="window live demo-window">
-    <div class="bar"><i></i><i></i><i></i><span class="title">icelens — sandbox 'demo'</span>{link}</div>
-    <div class="stage">
-      <div id="terminal" class="terminal"></div>
-      <div id="boot" class="boot">
-        <div class="boot-card">
-          {BOOT_MARK}
-          <p id="label" class="boot-label" role="status">Getting ready</p>
-          <progress id="bar" max="4" value="0" aria-label="Loading the demo"></progress>
-          <ol id="steps" class="boot-steps" aria-hidden="true">{steps}</ol>
-          <button id="launch" type="button" class="button" hidden>Start the demo</button>
-          <p class="boot-fine">The real icelens, running in your browser through Pyodide. About 29&nbsp;MB
-          the first time, cached after. Keys you type while it loads are kept.</p>
-        </div>
+def screenshot_figure(shot: dict[str, Any]) -> str:
+    """The home page's labelled screenshot: the app's first screen as text, in both themes.
+
+    `shot` is `scripts/screenshot.py`'s JSON. The labels sit at the row and
+    column where the text they point at was found, in the screen's own character cells, so they
+    stay on it at any width.
+    """
+    def screen(theme: str) -> str:
+        match = re.fullmatch(r"<style>(.*)</style><pre>(.*)</pre>", shot[theme]["html"], re.S)
+        if match is None:
+            raise BuildError("the screenshot is not the HTML it was expected to be")
+        # Rich names its classes r1, r2 ... in each theme alike: each set is kept to its own copy.
+        style = re.sub(r"(^|\n)\.r(\d+) ", rf"\1.shot-{theme} .r\2 ", match.group(1))
+        return f'<style>{style}</style><pre class="shot-{theme}" aria-hidden="true">{match.group(2)}</pre>'
+
+    places, notes = shot["dark"]["places"], shot["dark"]["notes"]
+    pins = "".join(
+        f'<span class="pin" style="--row:{row};--col:{col}"><b>{n}</b></span>'
+        for n, (row, col) in enumerate(places, 1)
+    )
+    items = "".join(f"<li>{note}</li>" for note in notes)
+    return f"""<figure class="shot">
+      <div class="window">
+        <div class="bar"><i></i><i></i><i></i><span class="title">icelens --demo</span></div>
+        <div class="shot-scroll"><div class="shot-screen" role="img" aria-label="icelens showing the demo table's Overview pane">
+          {screen("dark")}{screen("light")}<div class="pins" aria-hidden="true">{pins}</div>
+        </div></div>
       </div>
-    </div>
-  </div>
-  <p id="sql-note" class="status" role="status" hidden>The SQL pane's engine (DuckDB) is still loading; everything else is ready.</p>
-  <p id="status" class="status" role="alert" hidden></p>"""
+      <figcaption><ol class="callouts">{items}</ol></figcaption>
+    </figure>"""
 
 
-def fill(page: str, text: str) -> str:
+def fill(page: str, text: str, shot: dict[str, Any] | None = None) -> str:
     """A hand-written page from site/, with the shared header and footer in their placeholders.
 
-    `<!--#header-->` and `<!--#footer-->`; `<!--#header try.html-->` marks that link current.
+    `<!--#header-->` and `<!--#footer-->`; `<!--#header docs/index.html-->` marks that link current.
     """
     def head(match: re.Match[str]) -> str:
         return header("", (match.group(1) or "").strip())
 
     text = re.sub(r"<!--#header( [\w./-]+)?-->", head, text)
     text = text.replace("</head>", THEME_SCRIPT + "\n</head>", 1)
-    text = text.replace("<!--#demo-head-->", DEMO_HEAD).replace("<!--#demo-scripts-->", DEMO_SCRIPTS)
-    text = text.replace("<!--#demo-->", demo(full_screen_link=page != "try.html"))
+    if "<!--#screenshot-->" in text:
+        if shot is None:
+            raise BuildError(f"{page} has a screenshot and none was captured")
+        text = text.replace("<!--#screenshot-->", screenshot_figure(shot))
     return text.replace("<!--#footer-->", footer(""))
 
 
@@ -556,123 +520,33 @@ def prepare(out: Path) -> None:
     out.mkdir(parents=True)
 
 
-#: What Textual needs that Pyodide's own lockfile lacks, and the module each installs. Rich,
-#: Pygments, platformdirs and typing-extensions are in Pyodide's lockfile and come from there.
-TEXTUAL_WHEELS = {
-    "textual": "textual",
-    "markdown-it-py": "markdown_it",
-    "mdit-py-plugins": "mdit_py_plugins",
-    "mdurl": "mdurl",
-}
-
-
-def version_of(wheel_name: str) -> str:
-    return wheel_name.split("-")[1]
-
-
-def lock_entry(name: str, version: str, file_name: str, sha256: str, imports: list[str], depends: list[str]) -> dict:
-    """One package in Pyodide's lockfile format, so the page loads it with everything else."""
-    return {
-        "name": name, "version": version, "file_name": file_name, "sha256": sha256,
-        "install_dir": "site", "package_type": "package", "imports": imports, "depends": depends,
-        "unvendored_tests": False, "tool": {},
-    }
-
-
-def textual_entries() -> list[dict]:
-    """Textual and the three wheels it needs that Pyodide lacks, at the versions uv.lock pins.
-
-    Listed for Pyodide's own loader rather than left to micropip, which asks PyPI about each
-    package in turn before it downloads anything: here they download beside the rest, in one go.
-    The URLs and hashes are uv.lock's, so the page runs the Textual the suite was run with.
-    """
-    try:
-        import tomllib  # pyright: ignore[reportMissingImports] - 3.11+, checked against 3.10
-    except ImportError as e:  # Python 3.10
-        raise BuildError("building the site needs Python 3.11 or newer, for tomllib") from e
-    locked = {p["name"]: p for p in tomllib.loads((ROOT / "uv.lock").read_text())["package"]}
-    entries = []
-    for name, module in TEXTUAL_WHEELS.items():
-        package = locked.get(name)
-        wheel = next((w for w in (package or {}).get("wheels", []) if w["url"].endswith("-none-any.whl")), None)
-        if package is None or wheel is None:
-            raise BuildError(f"uv.lock has no pure-Python wheel for {name}, which the in-browser demo needs")
-        depends = [d["name"] for d in package.get("dependencies", []) if "marker" not in d]
-        entries.append(lock_entry(
-            name, package["version"], wheel["url"], wheel["hash"].removeprefix("sha256:"), [module], depends,
-        ))
-    return entries
-
-
-def build_wheel(out: Path) -> str:
+def capture_screenshot() -> dict[str, Any]:
+    """The home page's screenshot of the demo (scripts/screenshot.py), in both themes."""
     uv = shutil.which("uv")
     if uv is None:
-        raise BuildError("uv is not on PATH; it builds the wheel (python3 scripts/setup.py installs it)")
-    wheels = out / "wheels"
+        raise BuildError("uv is not on PATH; it runs the app to capture the home page's screenshot")
     try:
         run = subprocess.run(
-            [uv, "build", "--wheel", "--out-dir", str(wheels)],
-            cwd=ROOT, capture_output=True, text=True, timeout=600,
-        )
-    except subprocess.TimeoutExpired as e:
-        raise BuildError("uv build took more than ten minutes") from e
-    if run.returncode != 0:
-        tail = (run.stderr or run.stdout).strip().splitlines()
-        raise BuildError(f"uv build failed: {tail[-1] if tail else f'exit {run.returncode}'}")
-    found = sorted(wheels.glob("icelens-*.whl"))
-    if len(found) != 1:
-        raise BuildError(f"expected one icelens wheel in {wheels}, found {len(found)}")
-    # The version stays 0.1.0 across many deploys, so a browser holding the last wheel would keep
-    # it. A directory named for the wheel's contents gives every different build its own URL;
-    # latest.json, fetched uncached, says which one is current.
-    digest = hashlib.sha256(found[0].read_bytes()).hexdigest()[:16]
-    (wheels / digest).mkdir()
-    found[0].rename(wheels / digest / found[0].name)
-    name = f"{digest}/{found[0].name}"
-    wheel = wheels / name
-    icelens = lock_entry(
-        "icelens", version_of(wheel.name), name, hashlib.sha256(wheel.read_bytes()).hexdigest(),
-        ["icelens"], ["pyarrow", "pyiceberg", "textual"],
-    )
-    latest = {"wheel": name, "packages": [*textual_entries(), icelens]}
-    (wheels / "latest.json").write_text(json.dumps(latest, indent=1) + "\n")
-    # uv drops a .gitignore of "*" into its out-dir; harmless on Pages, but not part of the site.
-    (wheels / ".gitignore").unlink(missing_ok=True)
-    return name
-
-
-def capture_first_frame(out: Path) -> str:
-    """The demo's first screen, which try.html shows dimmed while Python loads (icelens.browser)."""
-    uv = shutil.which("uv")
-    if uv is None:
-        raise BuildError("uv is not on PATH; it runs the app to capture the demo's first frame")
-    try:
-        run = subprocess.run(
-            [uv, "run", "--quiet", "python", "-m", "icelens.browser", "first-frame", "120", "36"],
+            [uv, "run", "--quiet", "python", "scripts/screenshot.py", "120", "36"],
             cwd=ROOT, capture_output=True, text=True, timeout=300,
         )
     except subprocess.TimeoutExpired as e:
-        raise BuildError("capturing the demo's first frame took more than five minutes") from e
+        raise BuildError("capturing the screenshot took more than five minutes") from e
     if run.returncode != 0:
         tail = (run.stderr or run.stdout).strip().splitlines()
-        raise BuildError(f"capturing the first frame failed: {tail[-1] if tail else f'exit {run.returncode}'}")
-    frame = json.loads(run.stdout)
-    if "demo.orders" not in frame.get("ansi", ""):
-        raise BuildError("the captured first frame does not show the demo table")
-    # The frame shows the demo table's location and is published as it is.
-    shown = json.dumps(frame)
+        raise BuildError(f"capturing the screenshot failed: {tail[-1] if tail else f'exit {run.returncode}'}")
+    shot = json.loads(run.stdout)
+    shown = json.dumps(shot)
     leaked = [m for m in ("/Users/", "/home/", "/var/folders/", "\\\\Users\\\\") if m in shown]
     if leaked:
-        raise BuildError(f"the captured first frame shows a local path ({leaked[0]}); it would be published")
-    (out / "first-frame.json").write_text(json.dumps(frame) + "\n")
-    return "first-frame.json"
+        raise BuildError(f"the screenshot shows a local path ({leaked[0]}); it would be published")
+    return shot
 
 
-# The files a page or the worker loads by a fixed name. A browser may keep any of them from an
-# earlier build (GitHub Pages says ten minutes; a server that says nothing leaves it to the
-# browser's guess), and a new demo.js talking to an old worker.js is a demo that half works. So
-# every reference to them carries the build's stamp, and a new build is a new URL for all of them.
-STAMPED = ("style.css", "demo.js", "worker.js", "loader.mjs", "first-frame.json")
+# The files a page loads by a fixed name. A browser may keep one from an earlier build (GitHub
+# Pages says ten minutes; a server that says nothing leaves it to the browser's guess), so every
+# reference to them carries the build's stamp, and a new build is a new URL.
+STAMPED = ("style.css",)
 
 
 def stamp(out: Path) -> str:
@@ -685,21 +559,22 @@ def stamp(out: Path) -> str:
     names = "|".join(re.escape(name) for name in STAMPED)
     # Only a quoted reference: "style.css", "../style.css", "./loader.mjs".
     pattern = re.compile(rf"""(["'])((?:\.\.?/)?(?:{names}))\1""")
-    for path in [*out.glob("*.html"), *out.glob("docs/*.html"), out / "demo.js", out / "worker.js"]:
+    for path in [*out.glob("*.html"), *out.glob("docs/*.html")]:
         if path.is_file():
             text = path.read_text(encoding="utf-8")
             path.write_text(pattern.sub(lambda m: f"{m[1]}{m[2]}?v={version}{m[1]}", text), encoding="utf-8")
     return version
 
 
-def build(out: Path, wheel: bool = True) -> list[str]:
+def build(out: Path) -> list[str]:
     site = ROOT / "site"
     if not (site / "index.html").is_file():
         raise BuildError(f"{site / 'index.html'} is missing")
     prepare(out)
     shutil.copytree(site, out, dirs_exist_ok=True)
+    shot = capture_screenshot()
     for page in out.glob("*.html"):
-        page.write_text(fill(page.name, page.read_text(encoding="utf-8")), encoding="utf-8")
+        page.write_text(fill(page.name, page.read_text(encoding="utf-8"), shot), encoding="utf-8")
     (out / "docs").mkdir(exist_ok=True)
     made = []
     for source, (page, _) in DOCS.items():
@@ -710,10 +585,6 @@ def build(out: Path, wheel: bool = True) -> list[str]:
             raise BuildError(f"cannot read {source}: {e.strerror}") from e
         (out / "docs" / page).write_text(doc_page(source, text), encoding="utf-8")
         made.append(f"docs/{page}")
-    if wheel:
-        made.append(f"wheels/{build_wheel(out)}")
-        made.append("wheels/latest.json")
-        made.append(capture_first_frame(out))
     stamp(out)
     # Pages runs Jekyll over the upload otherwise, which would drop files and directories whose
     # names start with an underscore.
@@ -724,13 +595,12 @@ def build(out: Path, wheel: bool = True) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build the icelens website into a directory GitHub Pages can serve.")
     parser.add_argument("--out", default="_site", help="output directory, replaced on each build (default _site)")
-    parser.add_argument("--no-wheel", action="store_true", help="skip building the wheel the in-browser demo installs")
     args = parser.parse_args(argv)
     out = Path(args.out)
     if not out.is_absolute():
         out = ROOT / out
     try:
-        made = build(out, wheel=not args.no_wheel)
+        made = build(out)
     except BuildError as e:
         print(f"build_site: {e}", file=sys.stderr)
         return 1
