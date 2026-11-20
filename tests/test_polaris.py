@@ -2,7 +2,7 @@
 
 Every test here is a defect that was real on 2026-10-15, against Polaris 1.8.0 over RustFS:
 the metadata panes worked and the rows did not, because neither the login nor the vended
-credentials reached DuckDB. `docs/FINDINGS.md` has the whole list. Skips unless a Polaris
+credentials reached DuckDB. Skips unless a Polaris
 answers - see `tests/polaris.py` for how to point it at one.
 
 The connections below are configured the way a person configures them - client credentials

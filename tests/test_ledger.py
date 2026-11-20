@@ -1,6 +1,6 @@
 """The Writer's ledger: whether the numbers it prints are the numbers that happened.
 
-`docs/UNVERIFIED.md` names the risk: every ledger test so far wrote one unpartitioned table with one
+The risk: every other ledger test wrote one unpartitioned table with one
 data file, and a partitioned overwrite that rewrites several files at once is where a derived
 number could be wrong and still look plausible. So the identity the ledger rests on is checked
 here against a table that spans partitions - `+rows - -rows` is exactly how far the table's row

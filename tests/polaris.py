@@ -3,7 +3,7 @@
 `live.py` covers Lakekeeper, which authenticates with nothing or a bearer token. Polaris is the
 other shape - OAuth client credentials, per-table vended credentials, nested namespaces - and
 it is the shape Snowflake's catalogs share, because they are Polaris. Every defect
-`docs/FINDINGS.md` lists was found against one; these tests keep them found.
+`tests/test_polaris.py` covers was found against one; these tests keep them found.
 
 `make test-live` starts one (`tests/compose/stack.yml`, with RustFS as the store) and points
 the suite at it through `tests/compose/live.env`. To use a Polaris of your own, with an S3 store

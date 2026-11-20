@@ -11,9 +11,9 @@ connect to each, and what to do when something goes wrong.
 | A local SQL catalog, and icelens's own sandboxes | **Works.** Tested on every change. |
 | Iceberg REST: Lakekeeper | **Works.** Tested live in CI. |
 | Apache Polaris | **Works.** Tested live in CI. |
+| Google BigLake (the Lakehouse runtime catalog) | **Works.** Run against a real Google Cloud project. |
 | Snowflake (Open Catalog or Horizon) | **Should work.** Not yet run against a real account. |
 | Databricks Unity Catalog | **Should work** on AWS and Google Cloud. Not yet run against a real workspace. |
-| Google BigLake | **Should work.** Not yet run against a real project. |
 | AWS Glue, S3 Tables, Hive, DynamoDB | **Should work** with PyIceberg's extra for each (see the guide's Install). Untested. |
 | Nessie | Untested. |
 | Anything on Azure storage (`abfss://`) | **Not yet.** The metadata panes fail as well as the rows. |
@@ -130,9 +130,3 @@ The [demo](https://harkanwals.github.io/icelens/try.html) is the real icelens, r
 - **Tested in Chrome.** Firefox, Safari and phones have not been tried.
 - **Reading only.** Writing needs DuckDB extensions the browser does not have, and says so.
 - **Keys:** click the terminal to use it; press `Esc` twice to leave it.
-
-## For contributors
-
-How each claim on this page was checked, with dates, versions and the bugs found along the way,
-is in [FINDINGS.md](FINDINGS.md). What has not been checked, and how to check it, is in
-[UNVERIFIED.md](UNVERIFIED.md).

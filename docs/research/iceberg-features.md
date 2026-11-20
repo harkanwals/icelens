@@ -74,7 +74,7 @@ each run headless (`--pane X --json`) against the table.
 |---|---|---|
 | Views | Spark 4.1 + Iceberg 1.12 `CREATE VIEW`, `CREATE OR REPLACE`, `ALTER … SET TBLPROPERTIES`, `SHOW VIEWS`, `RENAME`, `SELECT` ✅ run against `--serve`; Trino 484 `CREATE VIEW` ✅ run, shown with dialect `trino` (before: "Server does not support endpoint: POST …/views") | ✅ now: in the tree, every version and dialect shown; `--pane overview` prints it. Untested against Lakekeeper/Polaris |
 | Server-side scan planning | PyIceberg 0.12 has `plan_scan`, `supports_server_side_planning` | not used; untested |
-| Credential refresh endpoint | in spec | not used; relates to FINDINGS #9 (long sessions outlive their token) |
+| Credential refresh endpoint | in spec | not used; a long session outlives its token |
 | Multi-table commit, unregister, functions | in spec | not relevant to a reader, except listing functions (**unverified** whether any catalog serves them) |
 
 Footnotes:
@@ -163,7 +163,7 @@ Still open:
 - PyIceberg 0.12.0 through the same REST catalog.
 - Each table, each pane: `icelens --uri … --pane P TABLE --json`.
 - Not run: Flink, iceberg-rust, Lakekeeper/Polaris (views), encryption, multi-argument
-  transforms. Trino 484 was run afterwards (`docs/FINDINGS.md`, Reading 5).
+  transforms. Trino 484 was run afterwards.
 - Full suite afterwards: 1044 passed, 25 skipped (live catalogs, packaging), 0
   failed; `ruff check` and `pyright` clean. The 3 host-dependent failures seen first (time zone,
   `~/.pyiceberg.yaml`) were fixed.

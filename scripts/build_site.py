@@ -31,7 +31,6 @@ DOCS = {
     "docs/GUIDE.md": ("index.html", "Guide"),
     "README.md": ("start.html", "Start"),
     "docs/PLATFORMS.md": ("platforms.html", "Platforms"),
-    "docs/UNVERIFIED.md": ("unverified.html", "Unverified"),
     "docs/SANDBOX.md": ("sandbox.html", "Sandbox design"),
 }
 
@@ -379,8 +378,7 @@ def footer(prefix: str) -> str:
 
     use = [(f"{prefix}try.html", "Try it in your browser"), (f"{prefix}index.html#install", "Install"),
            (f"{prefix}docs/index.html", "The guide"), (REPO, "Source on GitHub")]
-    docs = [(f"{prefix}docs/platforms.html", "Platforms"), (f"{prefix}docs/unverified.html", "Unverified"),
-            (f"{prefix}docs/sandbox.html", "Sandbox design")]
+    docs = [(f"{prefix}docs/platforms.html", "Platforms"), (f"{prefix}docs/sandbox.html", "Sandbox design")]
     built = [("https://iceberg.apache.org", "Apache Iceberg"), ("https://py.iceberg.apache.org", "PyIceberg"),
              ("https://duckdb.org", "DuckDB"), ("https://textual.textualize.io", "Textual"),
              ("https://pyodide.org", "Pyodide")]

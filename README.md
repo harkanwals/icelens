@@ -122,8 +122,8 @@ mkdir -p ~/.claude/skills/icelens && icelens --skill > ~/.claude/skills/icelens/
 
 ## Where it works
 
-Tested against Iceberg REST (Lakekeeper, Apache Polaris) and local SQL catalogs. Snowflake,
-Databricks Unity, BigLake, Nessie, Glue, S3 Tables and Hive are supported in code but have not
+Tested against Iceberg REST (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs.
+Snowflake, Databricks Unity, Nessie, Glue, S3 Tables and Hive are supported in code but have not
 been run against a real account. Linux and macOS only for now: local catalogs do not work on
 Windows yet. [Platforms](https://harkanwals.github.io/icelens/docs/platforms.html) says what each needs and what has
 been verified, and [Limitations](https://harkanwals.github.io/icelens/docs/#limitations) lists what does not work yet.

@@ -81,8 +81,6 @@ reformatted file buries the change in its diff. `ruff check` is the rule.
   same at v3, `attachable` a REST catalog DuckDB can attach (live if configured, local if not),
   `rest_lake` and `rest_sandbox` lakes on top of it.
 - `docs/PLATFORMS.md`: for users - what works where, how to connect, what to do when it fails.
-  `docs/FINDINGS.md`: the evidence behind it - what was verified, how, and the bugs found.
-  `docs/UNVERIFIED.md`: what has not been verified.
 
 ## Rules the code keeps
 
@@ -109,9 +107,9 @@ that breaks one fails there.
 - A behaviour change needs a test that fails without it. Prefer the real thing over mocks: a real
   catalog in a temp directory, the real app driven through Textual's pilot, real HTTP to
   `rest.serve()`.
-- Platform-specific behaviour gets a line in `docs/FINDINGS.md`, saying what was verified and
-  how, and, if a user would notice it, a short one in `docs/PLATFORMS.md`, written for them: what
-  works, how to connect, what to do. Do not claim support that has not been run.
+- Platform-specific behaviour that a user would notice gets a short line in `docs/PLATFORMS.md`,
+  written for them: what works, how to connect, what to do. The commit says what was run to
+  verify it. Do not claim support that has not been run; the page marks what is untested.
 - `--json` output is a contract (`tests/test_json_contract.py`). Changing a key or a type is a
   breaking change; say so in the commit.
 - Dependency floors are tested, not guessed: CI's `minimums` job installs the lowest version of

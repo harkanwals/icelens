@@ -16,8 +16,8 @@ one place to look and the one place to change.
   and Polaris in Docker and runs the suite against them.
 - A change in behaviour comes with a test that fails without it.
 - A claim about a platform (Polaris, Snowflake, Databricks, BigLake, anything else) goes in
-  `docs/PLATFORMS.md`, with what was run to verify it. What has not been run goes in
-  `docs/UNVERIFIED.md` instead.
+  `docs/PLATFORMS.md`, and the pull request says what was run to verify it. What has not been
+  run is marked there as untested.
 - A change to `--json` output is a breaking change; the pull request says so.
 
 Work done with a coding agent is welcome under the same rules. You own what you submit: read the

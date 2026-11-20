@@ -595,8 +595,8 @@ extensions, are not in it; `CALL enable_logging('HTTP')` in the SQL pane shows t
 - The in-browser demo ([try it](https://harkanwals.github.io/icelens/try.html)) runs the demo
   catalog only, on versions below the floors `pyproject.toml` sets; what it needs and what was verified is in
   [PLATFORMS.md](PLATFORMS.md#in-the-browser).
-- Some paths pass their unit tests and have never met the thing they are about - BigLake most of
-  all. They are listed, with how to test each, in [UNVERIFIED.md](UNVERIFIED.md).
+- Some paths pass their unit tests and have never met the thing they are about - Snowflake and
+  Databricks among them. [PLATFORMS.md](PLATFORMS.md) marks each one.
 - Azure (ADLS): PyIceberg 0.12 cannot read an `abfss://` metadata file, so the metadata panes
   fail there, not only the rows ([PLATFORMS.md](PLATFORMS.md)).
 - A v3 sandbox under a path with a non-ASCII character (`~/Leçons`) can be created, filled and
