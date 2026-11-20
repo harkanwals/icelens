@@ -32,7 +32,10 @@ jobs:
       - run: uv sync --locked --extra dev
       - name: Build the site and check its wheel under Pyodide
         run: make test-browser
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+      # v4, not v3: v3 calls actions/upload-artifact by tag from inside, and the repository
+      # requires every action, nested ones included, to be pinned to a commit. v4 leaves hidden
+      # files out of the artifact; the only one is .nojekyll, which a workflow deploy never reads.
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
         with:
           path: _site
 
