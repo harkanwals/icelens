@@ -1,10 +1,13 @@
 # icelens
 
-A terminal browser for Apache Iceberg catalogs. Point it at a catalog and walk what an Iceberg
-table actually is - snapshots, the manifest list, manifests, data and delete files - and the rows
-themselves. Pick a snapshot and every pane follows you there.
+A terminal app for Apache Iceberg tables. It shows what a table is made of - its commits
+(snapshots), the manifests and data and delete files each one points at, and the rows - as of any
+commit you pick. Use it for two things:
 
-Try it on a demo table, with nothing to configure: `uvx icelens --demo`.
+- **Learn Iceberg.** `uvx icelens --demo` opens a local table with five commits, nothing to
+  configure, and a guide beside every pane explains what the cursor is on.
+- **Inspect your production tables.** Point it at your catalog to see why a table has the files it
+  has, what a commit changed, and what the rows were before it. It only reads your catalog.
 
 ## Install
 

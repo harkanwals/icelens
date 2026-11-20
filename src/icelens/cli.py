@@ -45,7 +45,7 @@ from icelens.catalog import (
 from icelens.format import csv_bytes, grid, safe
 from icelens.model import Pane, View
 
-USAGE = """icelens - a terminal browser for Apache Iceberg catalogs
+USAGE = """icelens - learn Apache Iceberg, and inspect your production Iceberg tables
 
   icelens                                   open the catalog found in ./.env or ~/.pyiceberg.yaml
   icelens --demo                            no catalog yet? a local one, with a table to look at

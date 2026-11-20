@@ -136,7 +136,7 @@ class Welcome(App[str]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="welcome"):
-            yield Static(Text("icelens - a terminal browser for Apache Iceberg tables"), id="brand")
+            yield Static(Text("icelens - learn how Iceberg works, or inspect your production tables"), id="brand")
             yield Static(Text(INTRO), id="intro")
             items = []
             for value, label, detail in self.offered:

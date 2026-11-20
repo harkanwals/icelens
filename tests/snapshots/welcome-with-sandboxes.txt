@@ -1,7 +1,7 @@
 
       ╭──────────────────────────────────────────────────────────────────────────────────────╮
       │                                                                                      │
-      │  icelens - a terminal browser for Apache Iceberg tables                              │
+      │  icelens - learn how Iceberg works, or inspect your production tables                │
       │                                                                                      │
       │  No Iceberg catalog is configured here: nothing in --uri, the ICELENS_* variables,   │
       │  a .env or ~/.pyiceberg.yaml. You can still be looking at a real Iceberg table in    │

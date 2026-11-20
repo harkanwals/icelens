@@ -385,7 +385,7 @@ def footer(prefix: str) -> str:
   <div class="cols">
     <div>
       <a class="brand" href="{prefix}index.html">{MARK}icelens</a>
-      <p>A terminal browser for Apache Iceberg catalogs: snapshots, manifests, files and rows, as of any snapshot you pick.</p>
+      <p>Learn Apache Iceberg, and inspect your production Iceberg tables: snapshots, manifests, files and rows, as of any commit.</p>
     </div>
     <div>
       <h2>Use</h2>

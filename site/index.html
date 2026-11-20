@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>icelens · a terminal browser for Apache Iceberg catalogs</title>
-<meta name="description" content="icelens is a terminal browser for Apache Iceberg catalogs: snapshots, manifests, files and rows, with every pane pinned to the snapshot you pick.">
+<title>icelens · learn Apache Iceberg, and inspect your Iceberg tables</title>
+<meta name="description" content="icelens is a terminal app for Apache Iceberg tables. Use it to learn how Iceberg works on a demo table, or to inspect your production tables: snapshots, manifests, files and rows, as of any commit. It only reads your catalog.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%230a7ea4' d='M16 4 21.5 13h-11z'/%3E%3Cpath fill='%230a7ea4' opacity='.4' d='M8.5 18h15l-3 9.5h-9z'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -13,11 +13,16 @@
 <main class="landing">
 
   <section class="hero">
-    <span class="eyebrow">A terminal browser for Apache Iceberg</span>
+    <span class="eyebrow">A terminal app for Apache Iceberg tables</span>
     <h1>See the rest of the iceberg.</h1>
-    <p class="lede"><code>SELECT *</code> shows you the tip. icelens shows what is under it: the
-    snapshots, the manifests, the data and delete files, and the rows, <strong>as of any snapshot
-    you pick</strong>.</p>
+    <p class="lede">icelens shows what an Iceberg table is made of: its commits, the manifests and
+    files each one points at, and the rows, <strong>as of any commit you pick</strong>.</p>
+    <ul class="uses">
+      <li><b>Learn Iceberg.</b> <code>icelens --demo</code> opens a table with five commits, and a
+      guide beside every pane explains what the cursor is on.</li>
+      <li><b>Inspect your production tables.</b> Point it at your catalog and see why a table has the
+      files it has, what a commit changed, and what the rows were before it. It only reads.</li>
+    </ul>
     <!--#screenshot-->
     <div class="actions after-demo">
       <a class="button" href="#install">Install</a>

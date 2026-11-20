@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "icelens"
 version = "0.1.0"
-description = "A terminal browser for Apache Iceberg catalogs: namespaces, schemas, snapshots, manifests, files and rows, without leaving the shell."
+description = "Learn Apache Iceberg, and inspect your production Iceberg tables, from the terminal: snapshots, manifests, files and rows, as of any commit."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
