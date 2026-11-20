@@ -24,3 +24,7 @@ _site/
 # The Pyodide harness's own install (tests/pyodide/package-lock.json is committed)
 node_modules/
 tests/pyodide/.pyodide-cache/
+
+# A .env holds a catalog's token and keys (the guide says to keep them there); never commit one.
+.env
+.env.*
