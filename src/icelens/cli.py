@@ -867,7 +867,13 @@ def _print_pane(pane: Pane, args: argparse.Namespace, kind: str, **extra: Any) -
             extra["columns"] = [{"name": f.name, "type": str(f.type)} for f in pane.data.schema]
         return _emit(kind, pane.records(), pane.note, **extra)
     if getattr(args, "csv", False):
-        sys.stdout.buffer.write(csv_bytes(pane.data))
+        data = csv_bytes(pane.data)
+        if sys.stdout.isatty():
+            # Exact bytes are the CSV contract for a file or a pipe. A terminal is a reader, and
+            # a value out of someone's Parquet can hold a sequence that writes the clipboard.
+            text = data.decode("utf-8", errors="replace")
+            data = "\n".join(safe(line) for line in text.split("\n")).encode()
+        sys.stdout.buffer.write(data)
         return 0
     if pane.note:
         _note(pane.note)

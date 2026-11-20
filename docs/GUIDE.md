@@ -427,6 +427,10 @@ icelens --catalogs                               # every catalog in ~/.pyiceberg
 icelens --catalog lab --list                     # one of them
 ```
 
+`--csv` writes the exact values to a file or a pipe. Printed straight to a terminal, control
+characters in them are replaced first, as every other output does, so a value cannot drive the
+terminal reading it.
+
 Exit codes: `0` fine, `1` something the catalog or the query refused, `2` bad usage (including
 asking for the UI when stdout is not a terminal), `130` interrupted, `141` the reader closed the
 pipe (`| head`) - quietly, with no traceback.

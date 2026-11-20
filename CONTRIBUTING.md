@@ -31,6 +31,8 @@ Then run it again with `--trace trace.log` and attach the file: it records every
 catalog and every DuckDB statement, with credentials masked. Read it before you post it all the
 same - table names, namespaces and hostnames are in it, by design.
 
+A security problem goes to a private report instead, as [SECURITY.md](SECURITY.md) says.
+
 ## How icelens is built
 
 - `catalog.py` - connection discovery, the catalog's *type*, the route to its rows, and the two

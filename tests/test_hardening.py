@@ -308,6 +308,55 @@ async def test_a_tree_label_is_text_not_markup(app) -> None:
         assert "[red]" in tree.root.children[0].label.plain
 
 
+# An OSC 8 hyperlink that shows one thing and opens another, and a screen clear: both are names a
+# hostile catalog can give a namespace or a table.
+_EVIL_NAME = "ns\x1b]8;;http://evil.example\x1b\\click\x1b]8;;\x1b\\"
+
+
+def _frame(app) -> str:
+    """The bytes the driver would write for a full redraw: what actually reaches the terminal."""
+    from rich.console import Console
+
+    console = Console(force_terminal=True, color_system="truecolor", width=app.size.width)
+    return app.screen._compositor.render_update(full=True).render_segments(console)
+
+
+async def test_a_catalog_name_cannot_drive_the_terminal(app) -> None:
+    from harness import settle
+    from textual.widgets import TextArea
+
+    table = _EVIL_NAME + ".t\x1b[2J"
+    async with app.run_test(size=(120, 40)) as pilot:
+        await settle(app, pilot)
+        app._build_tree([_EVIL_NAME], {_EVIL_NAME: [table]}, "")
+        app.select_table(table)
+        await pilot.pause()
+        frame = _frame(app)
+        # The name still shows, with ESC drawn as a visible glyph; what must not arrive is a
+        # working sequence.
+        assert "\x1b]8;;http://evil" not in frame and "\x1b[2J" not in frame
+        assert "\x1b" not in app.sub_title
+        # The starter query is left alone rather than holding the raw name or a cleaned one
+        # that would name a different table.
+        assert "evil" not in app.query_one("#sql", TextArea).text
+
+
+async def test_a_server_error_in_the_tree_is_text_not_markup(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    from harness import settle
+    from textual.widgets import Tree
+
+    def refuse() -> list[str]:
+        raise RuntimeError("[link=http://evil.example]sign in[/link] \x1b[2J")
+
+    async with app.run_test() as pilot:
+        await settle(app, pilot)
+        monkeypatch.setattr(app.lake, "namespaces", refuse)
+        app.load_tree()
+        await settle(app, pilot)
+        label = app.query_one("#nav", Tree).root.label
+        assert isinstance(label, Text) and "[link=" in label.plain and "\x1b" not in label.plain
+
+
 async def test_a_notification_is_cut_and_never_markup(app, monkeypatch: pytest.MonkeyPatch) -> None:
     from icelens.app import NOTIFY_CHARS, IcelensApp
 

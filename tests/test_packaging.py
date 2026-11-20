@@ -112,6 +112,11 @@ def test_the_wheel_says_what_it_needs(wheel: Path) -> None:
     runtime = [r for r in requires if "extra ==" not in r]
     for needed in ("textual", "pyiceberg[pyarrow,sql-sqlite]", "duckdb", "pyarrow"):
         assert any(r.replace(" ", "").startswith(needed) for r in runtime), f"{needed} is not a runtime dependency: {runtime}"
+    # An installer that ignores uv.lock takes the newest DuckDB the range allows; 2.0 broke
+    # every sandbox CREATE, so the range must stop short of a major nobody has run the suite on.
+    (duckdb,) = [r for r in runtime if r.replace(" ", "").startswith("duckdb")]
+    assert "<2" in duckdb.replace(" ", ""), duckdb
+    assert "Operating System :: OS Independent" not in text, "local catalogs do not work on Windows yet"
     (entry_points,) = [n for n in archive.namelist() if n.endswith(".dist-info/entry_points.txt")]
     assert "icelens = icelens.cli:main" in archive.read(entry_points).decode()
 
@@ -123,6 +128,21 @@ def test_the_sdist_can_rebuild_the_wheel(sdist: Path) -> None:
         assert needed in names, needed
     stray = [n for n in names if n.startswith((".venv", ".hypothesis", ".pytest_cache", ".coverage", "dist/")) or "__pycache__" in n]
     assert not stray, stray
+
+
+def test_the_sdist_collects_its_own_tests(sdist: Path, tmp_path: Path) -> None:
+    """Someone packaging icelens runs `pytest` in the unpacked sdist; a test that imports a file
+    the sdist leaves out stops collection there, and then nothing runs at all."""
+    with tarfile.open(sdist) as archive:
+        archive.extractall(tmp_path, filter="data") if sys.version_info >= (3, 12) else archive.extractall(tmp_path)  # noqa: S202
+    (tree,) = tmp_path.glob("icelens-*")
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("ICELENS_", "PYTHON"))}
+    env["PYTHONPATH"] = str(tree / "src")
+    done = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"],
+        cwd=tree, env=env, capture_output=True, text=True, timeout=300,
+    )
+    assert done.returncode == 0 and "error" not in done.stdout.lower().splitlines()[-1], done.stdout[-2000:] + done.stderr[-2000:]
 
 
 # -- what it does once installed ------------------------------------------------------------------

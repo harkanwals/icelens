@@ -562,3 +562,45 @@ def test_a_reader_that_stops_reading_gets_no_traceback(tmp_path) -> None:
     err = process.stderr.read().decode()
     assert process.wait(timeout=120) == 141, err
     assert "Traceback" not in err and "BrokenPipe" not in err, err
+
+
+class _Terminal:
+    """A stdout that says it is a terminal, holding what was written to it."""
+
+    def __init__(self) -> None:
+        import io
+
+        self.buffer = io.BytesIO()
+
+    def isatty(self) -> bool:
+        return True
+
+    def write(self, text: str) -> int:
+        return self.buffer.write(text.encode())
+
+    def flush(self) -> None:
+        pass
+
+
+def test_csv_to_a_terminal_cannot_drive_it_but_a_file_gets_exact_bytes(lake: Lake, monkeypatch, capfd) -> None:
+    """A column named by whoever made the table: an OSC 52 clipboard write, as a name."""
+    import pyarrow as pa
+
+    hostile = "c\x1b]52;c;cHduZWQ=\x07"
+    import sys
+
+    # The lake is shared by the whole session, and other tests count its tables: this one leaves none.
+    lake.catalog.create_table("demo.hostile", schema=pa.schema([pa.field(hostile, pa.int64())]))
+    try:
+        real, terminal = sys.stdout, _Terminal()
+        monkeypatch.setattr("sys.stdout", terminal)
+        assert main(argv(lake, "--pane", "schema", "demo.hostile", "--csv")) == 0
+        shown = terminal.buffer.getvalue().decode()
+        assert "\x1b" not in shown and "\x07" not in shown and "52;c;" in shown
+        assert len(shown.strip().splitlines()) == 2  # header and one row: records stay records
+
+        monkeypatch.setattr("sys.stdout", real)
+        assert main(argv(lake, "--pane", "schema", "demo.hostile", "--csv")) == 0
+        assert hostile in capfd.readouterr().out  # redirected, it is the exact value
+    finally:
+        lake.catalog.drop_table("demo.hostile")

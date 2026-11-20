@@ -420,7 +420,7 @@ def footer(prefix: str) -> str:
 # exists. Not on a phone or a connection that says it is slow or metered, where 29 MB nobody
 # asked for is a cost: those get the preview and a button. demo.js replays whatever the worker
 # said before it was listening.
-DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" integrity="sha384-8Xk9wy/gzEDUKrXtrmCFa2bBuK3BpjpDuL/p0SeKQX19Khl/M+lHOgD/CyYf7efP" crossorigin="anonymous">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://files.pythonhosted.org" crossorigin>
 <link rel="preload" href="first-frame.json" as="fetch" crossorigin>
@@ -443,8 +443,10 @@ DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/
   })();
 </script>"""
 
-DEMO_SCRIPTS = """<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+# Pinned by hash as well as version: a CDN that served other bytes would otherwise run them on
+# this origin. Each hash is of the file in the npm tarball, which is what jsDelivr serves.
+DEMO_SCRIPTS = """<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js" integrity="sha384-M169f14mRZOXm3hD/v2Ti0ThIT/RnAQagXA9nlE15yHAtrW19gdePJh/HaTzUOe/" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js" integrity="sha384-iF+jqbuti4XlB64clWgFWYEscb+UnSRv3VgVikGYZu+otNFnSHr7y7NcKfBnGizn" crossorigin="anonymous"></script>
 <script src="demo.js"></script>"""
 
 # The loading card: an iceberg riding a moving waterline, the four stages the worker reports,

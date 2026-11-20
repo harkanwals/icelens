@@ -257,6 +257,32 @@ def test_creates_of_one_namespace_racing_get_one_success_and_conflicts(server: r
     assert sorted(statuses) == [200] + [409] * 7, statuses
 
 
+def test_connections_past_the_cap_are_closed_and_the_rest_still_served(server: rest.Running) -> None:
+    """The token is checked per request, so a process without it can still open connections;
+    each holds a thread and a descriptor, and with no cap enough of them exhaust the process."""
+    import threading
+
+    assert 16 <= rest._Server.max_connections <= 256
+    server._server._slots = threading.BoundedSemaphore(2)
+    host, port = server.uri.removeprefix("http://").split(":")
+    held = [socket.create_connection((host, int(port))) for _ in range(2)]
+    try:
+        with socket.create_connection((host, int(port))) as extra:
+            extra.settimeout(5)
+            assert extra.recv(1) == b""  # closed at once, not left waiting for a slot
+    finally:
+        for connection in held:
+            connection.close()
+    for _ in range(50):  # the held connections' threads notice the close and give their slots back
+        try:
+            if _call(server, "GET", "/v1/config")[0] == 200:
+                break
+        except (ConnectionError, urllib.error.URLError):
+            pass
+    else:
+        pytest.fail("the server never served again after the held connections closed")
+
+
 def test_a_burst_of_connections_fits_the_listen_backlog() -> None:
     # socketserver's default backlog of 5 overflowed under load and macOS reset the connection
     # that did not fit: the race test above failed that way, 3 runs in 40 with the CPU busy.
