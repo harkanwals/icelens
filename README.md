@@ -4,8 +4,8 @@ A terminal browser for Apache Iceberg catalogs. Point it at a catalog and walk w
 table actually is - snapshots, the manifest list, manifests, data and delete files - and the rows
 themselves. Pick a snapshot and every pane follows you there.
 
-[Try it in your browser](https://harkanwals.github.io/icelens/try.html) first, if you like: the
-real icelens on a demo catalog, nothing to install.
+[Try it in your browser](https://harkanwals.github.io/icelens/try.html): the real icelens on a
+demo catalog, with nothing to install.
 
 ## Install
 
@@ -54,7 +54,7 @@ variables or a `.env` only you can read. icelens never prints a credential.
 
 A REST catalog with several warehouses (Lakekeeper, Polaris) gets a picker, and `ctrl+w` switches
 warehouse. Recipes for Polaris, Snowflake, Databricks and BigLake are in the
-[guide](https://harkanwals.github.io/icelens/docs/#polaris-snowflake-and-databricks-oauth-and-vended-credentials).
+[guide](https://harkanwals.github.io/icelens/docs/#oauth-catalogs-polaris-snowflake-databricks).
 
 ## What you see
 
@@ -85,8 +85,8 @@ icelens --sandbox lesson --v3  # the same at format-version 3: deletion vectors,
 icelens --demo --v3 --serve    # serve it over Iceberg REST for Spark, DuckDB or PyIceberg
 ```
 
-Write `CREATE`, `INSERT` and `DELETE` statements and see exactly what each commit did to the
-table. The [guide](https://harkanwals.github.io/icelens/docs/#the-sandbox-make-iceberg-do-it-in-front-of-you) walks through it.
+Write `CREATE`, `INSERT` and `DELETE` statements and see what each commit did to the table. See
+the [guide](https://harkanwals.github.io/icelens/docs/#the-sandbox).
 
 ## In scripts
 
@@ -99,20 +99,17 @@ icelens --pane files demo.orders --json
 icelens --sql 'SELECT count(*) FROM icelens."demo"."orders"'
 ```
 
-These read the catalog you have configured; add `--demo` to try them without one.
-`--sql` refuses anything that writes, and any table that is not the catalog's. It is still
-DuckDB, which can read local files and URLs, so run only SQL you have read: the
-[guide](https://harkanwals.github.io/icelens/docs/#--sql-reads-and-says-so) says what is checked
-and what is not. Exit codes are `0` fine, `1` refused by the catalog or the
-query, and `2` bad usage. The `--json` format is documented in the
-[guide](https://harkanwals.github.io/icelens/docs/#--json-for-readers-that-are-not-people).
+- These read the catalog you have configured. Add `--demo` to try them without one.
+- `--sql` refuses anything that writes, and any table that is not the catalog's. It is still
+  DuckDB, which can read local files and URLs, so run only SQL you have read. The
+  [guide](https://harkanwals.github.io/icelens/docs/#--sql) says what is checked.
+- Exit codes: `0` fine, `1` refused by the catalog or the query, `2` bad usage.
+- The `--json` format is in the [guide](https://harkanwals.github.io/icelens/docs/#--json).
 
 ## With a coding agent
 
-icelens ships an [Agent Skill](https://agentskills.io) that teaches an LLM agent to drive it
-through the headless flags: find the catalog, read any pane as JSON, query with read-only SQL,
-explain Iceberg terms, and write only in a sandbox. Install it where your agent looks for
-skills; for Claude Code:
+icelens ships an [Agent Skill](https://agentskills.io) that teaches a coding agent to drive it
+through the headless flags. Install it where your agent looks for skills. For Claude Code:
 
 ```bash
 mkdir -p ~/.claude/skills/icelens && icelens --skill > ~/.claude/skills/icelens/SKILL.md
@@ -130,7 +127,7 @@ been verified, and [Limitations](https://harkanwals.github.io/icelens/docs/#limi
 
 ## More
 
-- [The guide](https://harkanwals.github.io/icelens/docs/): every pane, key, flag and route in detail.
+- [The guide](https://harkanwals.github.io/icelens/docs/): every pane, key and flag.
 - [Platforms](https://harkanwals.github.io/icelens/docs/platforms.html): connecting to each catalog, and what to do when it fails.
 - [Contributing](https://github.com/harkanwals/icelens/blob/main/CONTRIBUTING.md): how icelens is built and tested.
 

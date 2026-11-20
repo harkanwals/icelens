@@ -154,7 +154,7 @@ def test_an_insert_into_one_partition_lands_in_it(parted: Lake) -> None:
 def test_an_insert_that_spans_partitions_is_refused_and_writes_nothing(parted: Lake) -> None:
     """`add_files` adopts one Parquet file as written, and one file cannot sit in two partitions.
 
-    SANDBOX.md calls this the known limit of the offline route. It has to arrive as a refusal
+    This is the known limit of the offline route. It has to arrive as a refusal
     that leaves the table as it was, rather than as somebody else's exception.
     """
     with pytest.raises(IcelensError, match="append on demo.parted failed"):

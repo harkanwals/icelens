@@ -79,9 +79,9 @@ def test_links_between_docs_go_to_the_pages():
 
 
 def test_links_resolve_relative_to_the_doc_they_are_in():
-    out = md("[r](../README.md) [u](SANDBOX.md#3) [t](../tests/live.py)", source="docs/PLATFORMS.md")
+    out = md("[r](../README.md) [u](GUIDE.md#3) [t](../tests/live.py)", source="docs/PLATFORMS.md")
     assert '<a href="start.html">r</a>' in out
-    assert '<a href="sandbox.html#3">u</a>' in out
+    assert '<a href="index.html#3">u</a>' in out
     assert f'<a href="{REPO}/blob/main/tests/live.py">t</a>' in out
 
 

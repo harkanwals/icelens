@@ -58,20 +58,17 @@
   <section class="section" id="features">
     <div class="inner">
       <span class="eyebrow">Why</span>
-      <h2>Iceberg's structure is the interesting part, and the invisible part.</h2>
-      <p class="intro">A query tells you nothing about why the last write made three snapshots, which
-      files a commit retired, or what the schema was six versions ago. The usual answer is
-      <code>metadata.json</code> in a pager and paths followed by hand. icelens makes that chain
-      something you can walk.</p>
+      <h2>What a query does not tell you.</h2>
+      <p class="intro">Why the last write made three snapshots, which files a commit retired, what
+      the schema was six versions ago. icelens shows each of these in a pane.</p>
 
       <div class="grid">
         <article class="card span2">
           <div>
             <h3><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg>Pin a snapshot</h3>
-            <p><b>Enter on a snapshot is the point of the tool.</b> Every pane re-reads as of it:
-            Schema shows the schema it was written with, Files and Layout what existed then, Data the
-            rows as of then.</p>
-            <p><kbd>u</kbd> comes back to now.</p>
+            <p><b>Press Enter on a snapshot</b> and every pane re-reads as of it: the schema it was
+            written with, the files that existed then, the rows as of then.</p>
+            <p><kbd>u</kbd> returns to the current snapshot.</p>
           </div>
 <pre class="term"><span class="dim">4 Snapshots · demo.orders</span>
 1 │ append       +120 rows
@@ -112,9 +109,8 @@
         <div class="copy">
           <span class="eyebrow">Snapshots</span>
           <h3>Every commit, and what it did.</h3>
-          <p><code>--demo</code> writes one table, <code>demo.orders</code>, with five commits chosen
-          so that every pane has something true to say. Commit 3 is the <code>DELETE</code> of twelve
-          test rows: an overwrite, +108 / &minus;120.</p>
+          <p><code>--demo</code> writes one table, <code>demo.orders</code>, with five commits.
+          Commit 3 is the <code>DELETE</code> of twelve test rows: an overwrite, +108 / &minus;120.</p>
           <p class="muted">Real output from a fresh demo, with some columns left out to fit.</p>
         </div>
         <figure class="window">
@@ -155,7 +151,6 @@ data     3709505998256409031       1      30     2    0     4.5 KB  16b26532-…
     <div class="inner">
       <span class="eyebrow">The panes</span>
       <h2>One key each. All of them follow the pinned snapshot.</h2>
-      <p class="intro">Whichever snapshot is pinned, every pane answers as of it.</p>
       <ul class="panes">
         <li><b><kbd>1</kbd>Overview</b>What <code>metadata.json</code> says: version, uuid, location, refs, properties, the metadata log.</li>
         <li><b><kbd>2</kbd>Schema</b>The viewed snapshot's schema, nested fields and field ids, identifier fields and partition transforms.</li>
@@ -174,11 +169,10 @@ data     3709505998256409031       1      30     2    0     4.5 KB  16b26532-…
   <section class="section alt" id="install">
     <div class="inner">
       <span class="eyebrow">Install</span>
-      <h2>On your PATH in one command.</h2>
-      <p class="intro">Install from PyPI, in its own environment. It works against any
-      Iceberg catalog PyIceberg can reach; tested with Iceberg REST (Lakekeeper, Apache Polaris) and
-      local SQL catalogs. What each platform needs, and what has been verified, is in
-      <a href="docs/platforms.html">Platforms</a>.</p>
+      <h2>One command.</h2>
+      <p class="intro">It reads any Iceberg catalog PyIceberg can reach. Tested with Iceberg REST
+      (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs; see
+      <a href="docs/platforms.html">Platforms</a> for the rest.</p>
       <div class="steps">
         <div class="card">
           <h3>Install</h3>
@@ -202,8 +196,8 @@ icelens --demo               # a local catalog worth opening</code></pre>
   <section class="section final">
     <div class="inner narrow">
       <h2>Walk a table in your browser.</h2>
-      <p>The demo is the real icelens, running in your tab through Pyodide: one table, five commits,
-      nothing sent anywhere. Full screen gives it room.</p>
+      <p>The demo is the real icelens, running in your tab: one table, five commits, nothing sent
+      anywhere.</p>
       <div class="actions">
         <a class="button" href="try.html">Open it full screen &rarr;</a>
         <a class="button ghost" href="docs/index.html">Read the guide</a>

@@ -1,8 +1,7 @@
 # Where icelens works
 
-icelens reads any Iceberg catalog PyIceberg can reach. Some have been run against for real, and
-some have only been written from the vendor's documentation. This page says which, how to
-connect to each, and what to do when something goes wrong.
+icelens reads any Iceberg catalog PyIceberg can reach. This page says which have been tested, how
+to connect to each, and what to do when something goes wrong.
 
 ## At a glance
 
@@ -14,15 +13,14 @@ connect to each, and what to do when something goes wrong.
 | Google BigLake (the Lakehouse runtime catalog) | **Works.** Run against a real Google Cloud project. |
 | Snowflake (Open Catalog or Horizon) | **Should work.** Not yet run against a real account. |
 | Databricks Unity Catalog | **Should work** on AWS and Google Cloud. Not yet run against a real workspace. |
-| AWS Glue, S3 Tables, Hive, DynamoDB | **Should work** with PyIceberg's extra for each (see the guide's Install). Untested. |
+| AWS Glue, S3 Tables, Hive, DynamoDB | **Should work** with PyIceberg's extra for each (see [Install](../README.md#install)). Untested. |
 | Nessie | Untested. |
 | Anything on Azure storage (`abfss://`) | **Not yet.** The metadata panes fail as well as the rows. |
 | Local catalogs on Windows | **Not yet.** PyIceberg cannot open a `file:///C:/…` path. |
 | In your browser | **The demo catalog only.** See [In the browser](#in-the-browser). |
 
-"Should work" means the code follows the vendor's documentation and passes its tests, but has never
-met the real service. If you try one, an issue saying what happened is the most useful thing you
-can send, whether it worked or not.
+"Should work" means the code follows the vendor's documentation and passes its tests, but has
+not been run against the real service. If you try one, please open an issue saying what happened.
 
 ## Connecting
 
@@ -89,7 +87,7 @@ icelens --uri https://biglake.googleapis.com/iceberg/v1/restcatalog \
 
 ## When something goes wrong
 
-The status bar always says how icelens is reading rows and why it changed course. Start there.
+Start with the status bar: it says how rows are being read, and why.
 
 | You see | What it means | What to do |
 |---|---|---|
