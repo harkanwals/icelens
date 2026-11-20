@@ -1,6 +1,6 @@
 name: pages
 
-# The website, rebuilt from main: the pages, and a screenshot of the app as it is on main.
+# The website, rebuilt from main: the pages, and a walk-through of the app as it is on main.
 #
 # It deploys to GitHub Pages until the repository has a CLOUDFLARE_PROJECT variable, and to that
 # Cloudflare Pages project after, with the CLOUDFLARE_ACCOUNT_ID variable and a
@@ -21,7 +21,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The walk-through is drawn by running the app through every screen, in both themes.
+    timeout-minutes: 40
     env:
       ICELENS_SITE_URL: ${{ vars.SITE_URL }}
     steps:

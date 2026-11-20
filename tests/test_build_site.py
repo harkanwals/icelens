@@ -6,6 +6,7 @@ and to the one rule that matters on a public page: text from a Markdown file is 
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from html.parser import HTMLParser
@@ -147,9 +148,9 @@ def test_every_doc_renders_to_safe_html(source):
     assert out.count("<pre>") == len(re.findall(r"^```", text, re.M)) // 2
 
 
-def test_the_build_writes_the_pages(tmp_path):
+def test_the_build_writes_the_pages(tmp_path, walk_graph):
     out = tmp_path / "_site"
-    made = build_site.build(out)
+    made = build_site.build(out, walk_graph)
     assert (out / "index.html").is_file() and (out / "style.css").is_file()
     assert (out / ".nojekyll").is_file()
     for page, _ in DOCS.values():
@@ -161,14 +162,15 @@ def test_the_build_writes_the_pages(tmp_path):
     home = (out / "index.html").read_text(encoding="utf-8")
     assert "<!--#" not in home and '<header class="site">' in home and '<footer class="site">' in home
     assert "aria-current" not in home
-    # The home page explains the app with a walk through labelled screens of it, one label per
-    # note in every scene, and runs no app: the way to try it is on your own machine.
-    scenes = re.findall(r'<div class="scene" id="scene-([\w-]+)".*?</ol>', home, re.S)
-    assert len(scenes) == home.count('role="tab" id=') == 4
-    for scene in re.findall(r'<div class="scene" .*?</ol>', home, re.S):
-        pins = re.findall(r'class="pin"[^>]*data-n="(\d+)"', scene)
-        notes = re.findall(r'<li data-n="(\d+)"', scene)
-        assert pins == notes and pins == [str(n) for n in range(1, len(pins) + 1)]
+    # The home page's terminal: the app's own screens, in both themes, the tour's first chapter
+    # drawn in with one label per note, and the rest of the walk beside it for the script.
+    assert home.count('role="tab" aria-selected') == 4 and home.count('<pre class="t-dark"') == home.count('<pre class="t-light"') == 1
+    figure = home[home.index('<figure class="shot"'):home.index("</figure>")]
+    pins = re.findall(r'class="pin"[^>]*data-n="(\d+)"', figure)
+    notes = re.findall(r'<li data-n="(\d+)"', figure)
+    assert pins == notes and pins == [str(n) for n in range(1, len(pins) + 1)]
+    shipped = json.loads((out / "walk.json").read_text(encoding="utf-8"))
+    assert shipped["states"] and shipped["light"]["states"] and len(shipped["tour"]) == 4
     assert "uvx icelens --demo" in home
     assert not any((out / name).exists() for name in ("try.html", "demo.js", "worker.js", "wheels"))
     assert not re.search(r"<script[^>]+src=", home) and "try.html" not in home
@@ -185,12 +187,12 @@ def test_the_build_writes_the_pages(tmp_path):
         for tag in re.findall(r"<script[^>]+src=\"https?://[^>]*>|<link[^>]+rel=\"stylesheet\"[^>]+href=\"https?://[^>]*>", html):
             assert re.search(r'integrity="sha384-[A-Za-z0-9+/]{64}"', tag) and 'crossorigin="anonymous"' in tag, (path.name, tag)
     # A rebuild replaces a previous build; anything else in the way is refused.
-    build_site.build(out)
+    build_site.build(out, walk_graph)
     other = tmp_path / "other"
     other.mkdir()
     (other / "keep.txt").write_text("mine")
     with pytest.raises(build_site.BuildError, match="not a previous build"):
-        build_site.build(other)
+        build_site.build(other, walk_graph)
     assert (other / "keep.txt").read_text() == "mine"
 
 
@@ -200,11 +202,11 @@ def test_the_build_refuses_the_checkout_itself(capsys):
     assert err.startswith("build_site: refusing to build into") and "\n" not in err
 
 
-def test_every_page_is_a_link_preview_at_the_address_it_is_served_from(tmp_path, monkeypatch):
+def test_every_page_is_a_link_preview_at_the_address_it_is_served_from(tmp_path, monkeypatch, walk_graph):
     # Networks read only absolute URLs, so a site served somewhere new must say so everywhere.
     monkeypatch.setenv("ICELENS_SITE_URL", "https://icelens.example/")
     out = tmp_path / "_site"
-    build_site.build(out)
+    build_site.build(out, walk_graph)
     card = (out / build_site.CARD).read_bytes()
     assert card[:8] == b"\x89PNG\r\n\x1a\n"
     assert (int.from_bytes(card[16:20], "big"), int.from_bytes(card[20:24], "big")) == (1200, 630)

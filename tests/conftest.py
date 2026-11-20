@@ -18,6 +18,7 @@ import json
 import os
 import time
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -347,3 +348,43 @@ def rest_sandbox(attachable: Attachable) -> Lake:
         yield lake
     finally:
         lake.close()
+
+
+@pytest.fixture(scope="session")
+def walk_home() -> Iterator[Path]:
+    """The sandbox the website's walk-through is drawn from, and the real app opened beside it.
+
+    Under /tmp, as scripts/walk.py's is: the screens show the sandbox's path, and the build
+    refuses a walk that shows one of this machine's own (pytest's are under the user's).
+    """
+    import shutil
+    import tempfile
+
+    home = Path(tempfile.mkdtemp(prefix="icelens-walk-", dir="/tmp"))
+    try:
+        yield home
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def walk_graph(walk_home: Path) -> dict:
+    """A smaller walk-through than the website's, drawn once for the session: four panes, every
+    commit, twenty rows; enough for the tour, and for the real app to be checked against it."""
+    import asyncio
+    import sys
+
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    if not (scripts / "walk.py").is_file():
+        pytest.skip("the website's scripts are not in this source tree")
+    sys.path.insert(0, str(scripts))
+    import walk
+
+    # Rows as scripts/walk.py reads them, with PyIceberg, in file order: DuckDB reads files in
+    # parallel, and the same table comes back in another order each run.
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setitem(sys.modules, "duckdb", None)
+        drawn = asyncio.run(walk.capture(home=walk_home, panes=("overview", "data", "snapshots", "commit"), row_limit=20))
+    # The light theme's screens are the dark one's here: that both themes make the same walk is
+    # checked on the website's own, by walk.merged.
+    return drawn | {"light": {key: drawn[key] for key in walk.SCREENS}}

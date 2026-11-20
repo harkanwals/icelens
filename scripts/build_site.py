@@ -2,7 +2,7 @@
 """Build the website GitHub Pages serves: `python3 scripts/build_site.py [--out _site]`.
 
 The site is hand-written HTML in `site/`, the repository's Markdown rendered into pages, and the
-home page's screenshot of the app (`scripts/screenshot.py`). Standard library only, so the Pages
+home page's walk-through of the app (`scripts/walk.py`). Standard library only, so the Pages
 workflow needs nothing but Python and uv, and the Markdown renderer is the small one below rather than a
 dependency: it handles what README.md and docs/ actually use, and escapes everything, so a
 `<script>` written in a doc arrives as text.
@@ -426,119 +426,375 @@ def footer(prefix: str) -> str:
 </footer>"""
 
 
-# --- The home page's screenshot -----------------------------------------------------------------
+# --- The home page's walk-through ---------------------------------------------------------------
 
-
-#: How a key the walk presses is written on the page.
-KEY_LABELS = {"comma": ",", "full_stop": ".", "enter": "Enter"}
-
-# The tour: one scene after another until the visitor touches it, then theirs to drive. Nothing
-# moves for someone who asked for reduced motion, or while the figure is off screen or the tab
-# is hidden. Hovering a label or a note lights up the pair.
-TOUR_SCRIPT = """<script>
+# The terminal on the home page: screens the real app drew at build time (scripts/walk.py), and a
+# table of which key leads where. Keys and clicks move through it; a tour presses the keys itself
+# until the visitor takes over. Nothing moves for reduced motion, off screen or in a hidden tab.
+WALK_SCRIPT = """<script>
 (() => {
-  const fig = document.querySelector(".shot[data-tour]");
+  // The rules are scripts/walk.py's - step, click, hover_at, hovered, compose - one for one.
+  const fig = document.querySelector(".shot[data-walk]");
   if (!fig) return;
-  const tabs = [...fig.querySelectorAll('[role="tab"]')];
-  const panels = tabs.map((tab) => document.getElementById(tab.getAttribute("aria-controls")));
-  const toggle = fig.querySelector(".tour-toggle");
-  const DWELL = 9000;
-  let at = 0, timer = 0, inView = false;
-  let stopped = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const term = fig.querySelector(".shot-screen"), pres = { dark: term.querySelector("pre.t-dark"), light: term.querySelector("pre.t-light") };
+  const pins = term.querySelector(".pins"), hint = fig.querySelector(".walk-hint");
+  const pressed = fig.querySelector(".pressed"), notes = fig.querySelector(".callouts");
+  const free = fig.querySelector("template.free").innerHTML;
+  const tabs = [...fig.querySelectorAll('[role="tab"]')], toggle = fig.querySelector(".tour-toggle");
+  const DWELL = 9000, STEP = 700;
+  const NAMES = { ArrowUp: "\\u2191", ArrowDown: "\\u2193", ArrowLeft: "\\u2190", ArrowRight: "\\u2192", Escape: "Esc", " ": "Space" };
+  // Keys the app answers that the page does not follow: it says so instead of doing nothing.
+  const ELSEWHERE = new Set(["0", "q", "r", "x", "c", "w", "g", "l", "e", "/", "[", "]", "Escape", "PageUp", "PageDown", "Home", "End"]);
+  let W = null, at = -1, help = null, shown = [], hover = null, mouse = null;
+  let chapter = 0, inView = false, timer = 0, run = 0, hintTimer = 0, touring = !matchMedia("(prefers-reduced-motion: reduce)").matches;
   fig.classList.add("live");
-  const running = () => !stopped && inView && !document.hidden;
+  let loading = null;
+  const load = () => loading ??= fetch(fig.dataset.walk).then((r) => r.json()).then((w) => { W = w; if (at < 0) at = W.start; });
+  const theme = () => {
+    const t = document.documentElement.dataset.theme;
+    return t === "light" || t === "dark" ? t : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  };
+  const screens = () => (theme() === "light" ? W.light : W);
+  const esc = (t) => t.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+  const width = (runs) => runs.reduce((n, [t]) => n + t.length, 0);
+  const cut = (runs, a0, b0) => {
+    const out = []; let x = 0;
+    for (const [t, s] of runs) {
+      const a = Math.max(a0, x), b = Math.min(b0, x + t.length);
+      if (a < b) out.push([t.slice(a - x, b - x), s]);
+      x += t.length;
+    }
+    return out;
+  };
+  const group = (s) => W.groups[W.group[s]];
+  const step = (s, k) => {
+    const m = W.moves.indexOf(k);
+    if (m >= 0) {
+      const to = W.move[s][m], n = k === "Enter" && to >= 0 ? W.enter_note[s] : -1;
+      return [to < 0 ? s : to, n < 0 ? null : n];
+    }
+    const g = group(s), to = g.next[W.fresh[s]][k], n = g.toast[k];
+    return [to === undefined ? s : to, n === undefined ? null : n];
+  };
+  const hoverAt = (s, y, x) => {
+    const lay = W.layouts[W.layout[s]];
+    if (!lay.pane) return null;
+    const [y0, r0, n, cols] = lay.cells;
+    for (const [x0, x1, c] of cols) {
+      if (x0 <= x && x < x1) {
+        if (y === lay.header) return [-1, c];
+        if (y0 <= y && y < y0 + n) return [r0 + y - y0, c];
+      }
+    }
+    return null;
+  };
+  const hovered = (before, after, h, k) => {
+    if (!h || (W.moves.includes(k) && W.cursor[before])) return null;
+    const a = group(before).name, b = group(after).name;
+    if (a === b) return h;
+    if (!a.includes("/tabs") && !b.includes("/tabs") && a.split("/")[1] === b.split("/")[1]) return [0, 0];
+    return null;
+  };
+  const click = (s, y, x) => {
+    const lay = W.layouts[W.layout[s]], g = group(s), strip = g.name.includes("/tabs");
+    const [fy, keys] = lay.footer;
+    if (y === fy) {
+      for (const [x0, x1, name] of keys) if (x0 <= x && x < x1) return W.footer_keys[name] ? ["key", W.footer_keys[name]] : ["unfollowed"];
+      return ["none"];
+    }
+    const [ty, tx0, tx1, names] = lay.tabs;
+    if (y === ty && tx0 <= x && x < tx1) {
+      const pane = g.name.split("/")[1];
+      for (const [x0, x1, name] of names) {
+        if (x0 <= x && x < x1 && name !== pane) {
+          const to = g.tabs[name] ?? -1;
+          return to >= 0 ? ["state", to, null] : ["unfollowed"];
+        }
+      }
+      if (strip) return ["none"];
+      return s === g.home ? ["state", g.tabs[pane], null] : ["unfollowed"];
+    }
+    if (lay.pane) {
+      const [top, bottom, left, right] = lay.pane;
+      if (top <= y && y < bottom && left <= x && x < right) {
+        const [y0, , n, cols] = lay.cells, here = strip ? g.home : s;
+        for (let k = 0; k < cols.length; k++) {
+          const [x0, x1] = cols[k];
+          if (y0 <= y && y < y0 + n && x0 <= x && x < x1) {
+            const to = lay.targets[(y - y0) * cols.length + k];
+            const same = to === here || (strip && to >= 0 && W.cursor[to][0] === W.cursor[here][0] && W.cursor[to][1] === W.cursor[here][1]);
+            if (same) return ["state", ...step(here, "Enter")];
+            return to >= 0 ? ["state", to, null] : ["unfollowed"];
+          }
+        }
+        if (y === lay.header) return here !== s ? ["state", here, null] : ["none"];
+        return ["unfollowed"];
+      }
+    }
+    for (const [y0, y1, x0, x1] of lay.others) if (y0 <= y && y < y1 && x0 <= x && x < x1) return ["unfollowed"];
+    return ["none"];
+  };
+  const compose = (S) => {
+    let rows = S.states[at].map((i) => S.lines[i]);
+    const lay = W.layouts[W.layout[at]], cursor = W.cursor[at];
+    const paste = (y, left, inner) => {
+      if (y >= 0 && y < rows.length) rows[y] = [...cut(rows[y], 0, left), ...inner, ...cut(rows[y], left + width(inner), W.cols)];
+    };
+    const restyle = (y, x0, x1, map) => {
+      rows[y] = [...cut(rows[y], 0, x0), ...cut(rows[y], x0, x1).map(([t, s]) => [t, map[s]]), ...cut(rows[y], x1, W.cols)];
+    };
+    if (hover && lay.pane && !(cursor && hover[0] === cursor[0] && hover[1] === cursor[1])) {
+      const [r, c] = hover, [y0, r0, n, cols] = lay.cells;
+      const y = r < 0 ? lay.header : y0 + r - r0, span = cols.find((col) => col[2] === c);
+      if (span && (r < 0 || (r0 <= r && r < r0 + n))) restyle(y, span[0], span[1], S.hovered[r < 0 ? 1 : 0]);
+    }
+    if (mouse && help === null) {
+      const [fy, keys] = lay.footer, [ty, , , names] = lay.tabs, pane = group(at).name.split("/")[1];
+      for (const [y, spans, which] of [[fy, keys, 2], [ty, names.filter((t) => t[2] !== pane), 3]]) {
+        const span = spans.find(([x0, x1]) => y === mouse[1] && x0 <= mouse[0] && mouse[0] < x1);
+        if (span) restyle(y, span[0], span[1], S.hovered[which]);
+      }
+    }
+    if (help !== null) {
+      rows = rows.map((row) => row.map(([t, s]) => [t, S.tint[s]]));
+      for (const [y, x, inner] of S.help.frames[help]) paste(y, x, inner);
+    }
+    let y = null;
+    for (const n of [...shown].reverse()) {
+      const t = S.toasts[n], top = (y ?? t.bottom) - t.rows.length + 1;
+      t.rows.forEach((inner, k) => paste(top + k, t.left, inner));
+      y = top - 2;
+    }
+    return rows;
+  };
+  const html = new WeakMap();
+  const render = () => {
+    if (!W || at < 0) return;
+    const t = theme(), S = screens(), prefix = t === "light" ? "l" : "d";
+    const pre = pres[t];
+    pre.innerHTML = compose(S).map((row) => {
+      let h = html.get(row);
+      if (h === undefined) {
+        h = row.map(([text, s]) => (S.styles[s] ? `<span class="${prefix}${s}">${esc(text)}</span>` : esc(text))).join("");
+        html.set(row, h);
+      }
+      return h;
+    }).join("\\n");
+  };
+  const say = (text) => {
+    hint.innerHTML = text; hint.hidden = false;
+    clearTimeout(hintTimer); hintTimer = setTimeout(() => { hint.hidden = true; }, 6000);
+  };
+  const toast = (n) => {
+    shown.push(n);
+    setTimeout(() => { const k = shown.indexOf(n); if (k >= 0) { shown.splice(k, 1); render(); } }, W.toasts[n].timeout * 1000);
+  };
+  const show = (k) => {
+    const kbd = document.createElement("kbd");
+    kbd.textContent = NAMES[k] || k;
+    pressed.append(kbd);
+    while (pressed.children.length > 5) pressed.firstElementChild.remove();
+  };
+  // One key, as the app takes it. The tour presses its keys through here too.
+  const press = (k, user) => {
+    show(k);
+    if (help !== null) {
+      if (k === "Escape" || k === "?" || k === "q") help = null;
+      else if (W.help.next[k]) help = W.help.next[k][help];
+      return render();
+    }
+    if (k === "?") { help = 0; hover = mouse = null; return render(); }
+    const before = at, [to, note] = step(at, k);
+    if (user && to === at && note === null) {
+      if (W.beyond[at].includes(k)) say("The page has the first rows of this grid; the app goes on down. <code>uvx icelens --demo</code>");
+      else if (ELSEWHERE.has(k) || (k === "Tab" && !("Tab" in group(at).next[W.fresh[at]]))) say(`<kbd>${esc(NAMES[k] || k)}</kbd> works in the app itself, which this page copies but does not run: <code>uvx icelens --demo</code>`);
+    }
+    at = to;
+    if (note !== null) toast(note);
+    hover = hovered(before, at, hover, k);
+    render();
+  };
+  const label = (c) => {
+    pins.innerHTML = c.places.map(([row, col], k) =>
+      `<span class="pin" style="--row:${row};--col:${col};--i:${k}" data-n="${k + 1}"><b>${k + 1}</b></span>`).join("");
+    notes.innerHTML = c.notes.map((n, k) => `<li data-n="${k + 1}">${n}</li>`).join("");
+    notes.classList.remove("free");
+  };
+  const unlabel = () => { pins.innerHTML = ""; notes.innerHTML = free; notes.classList.add("free"); };
+  const running = () => touring && inView && !document.hidden;
+  const select = (i) => tabs.forEach((tab, k) => { tab.setAttribute("aria-selected", String(k === i)); tab.tabIndex = k === i || (i < 0 && k === 0) ? 0 : -1; });
   const schedule = () => {
     clearTimeout(timer);
     fig.classList.toggle("playing", running());
-    toggle.textContent = stopped ? "Play the tour" : "Pause";
-    toggle.setAttribute("aria-pressed", String(!stopped));
-    const bar = tabs[at].querySelector(".progress");
+    toggle.textContent = touring ? "Pause" : "Play the tour";
+    toggle.setAttribute("aria-pressed", String(touring));
+    const bar = tabs[chapter].querySelector(".progress");
     bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
-    if (running()) timer = setTimeout(() => show(at + 1), DWELL);
+    if (running()) timer = setTimeout(() => go(chapter + 1, true), DWELL);
   };
-  const show = (i, focus) => {
-    at = (i + tabs.length) % tabs.length;
-    tabs.forEach((tab, k) => {
-      tab.setAttribute("aria-selected", String(k === at));
-      tab.tabIndex = k === at ? 0 : -1;
-      panels[k].hidden = k !== at;
-    });
-    if (focus) tabs[at].focus();
-    schedule();
+  // A chapter: its keys pressed one at a time while the tour plays, or straight to its screen.
+  const go = async (i, animate) => {
+    const mine = ++run;
+    chapter = (i + tabs.length) % tabs.length;
+    select(chapter); clearTimeout(timer); fig.classList.remove("playing");
+    pins.innerHTML = ""; help = null; hover = mouse = null;
+    await load();
+    const c = W.tour[chapter];
+    if (chapter === 0 || !animate) { shown = []; at = c.state; render(); }
+    else {
+      at = W.tour[chapter - 1].state;
+      for (const k of c.keys) {
+        await new Promise((r) => setTimeout(r, STEP));
+        if (mine !== run) return;
+        press(k, false);
+      }
+    }
+    if (mine !== run) return;
+    at = c.state; render(); label(c); schedule();
   };
-  const stop = () => { if (!stopped) { stopped = true; schedule(); } };
-  tabs.forEach((tab, k) => tab.addEventListener("click", () => { stopped = true; show(k); }));
+  const takeOver = () => {
+    fig.classList.add("used");
+    if (!touring && !pins.innerHTML) return;
+    touring = false; run++; select(-1); unlabel(); schedule();
+  };
+  const KEYS = new Set([...ELSEWHERE, "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", ",", ".", "u", "?", " ", "Tab",
+    "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+  term.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || !KEYS.has(e.key)) return;
+    // Tab is the page's, to leave the terminal, except where the app's Tab goes into a grid.
+    if (e.key === "Tab" && (e.shiftKey || !W || help !== null || !("Tab" in group(at).next[W.fresh[at]]))) return;
+    e.preventDefault();
+    takeOver();
+    load().then(() => { if (e.key !== " ") press(e.key, true); });
+  });
+  // Where the mouse is, in the screen's character cells.
+  const cell = (e) => {
+    const box = pres[theme()].getBoundingClientRect();
+    return [Math.floor(((e.clientX - box.left) / box.width) * W.cols), Math.floor(((e.clientY - box.top) / box.height) * W.rows)];
+  };
+  term.addEventListener("pointermove", (e) => {
+    if (!W || e.pointerType !== "mouse" || help !== null) return;
+    const [x, y] = cell(e);
+    mouse = [x, y]; hover = hoverAt(at, y, x);
+    render();
+  });
+  term.addEventListener("pointerleave", () => { if (W && (mouse || hover)) { mouse = hover = null; render(); } });
+  term.addEventListener("pointerdown", async (e) => {
+    if (e.button !== 0) return;
+    term.focus({ preventScroll: true });
+    takeOver();
+    await load();
+    const [x, y] = cell(e);
+    if (x < 0 || y < 0 || x >= W.cols || y >= W.rows || help !== null) return;
+    // A toast takes a click to dismiss it, as Textual's do.
+    let bottom = null;
+    for (const n of [...shown].reverse()) {
+      const t = screens().toasts[n], top = (bottom ?? t.bottom) - t.rows.length + 1;
+      if (top <= y && y <= (bottom ?? t.bottom) && t.left <= x) { shown.splice(shown.indexOf(n), 1); return render(); }
+      bottom = top - 2;
+    }
+    if (e.pointerType === "mouse") { mouse = [x, y]; hover = hoverAt(at, y, x); }
+    const done = click(at, y, x), before = at;
+    show("click");
+    if (done[0] === "key") {
+      if (done[1] === "?") { help = 0; hover = mouse = null; return render(); }
+      const [to, note] = step(at, done[1]);
+      at = to; if (note !== null) toast(note);
+    } else if (done[0] === "state") {
+      at = done[1]; if (done[2] !== null) toast(done[2]);
+    } else if (done[0] === "unfollowed") {
+      say("In the app, that click moves the focus there. This page follows the grids, the pane names and the footer\\u2019s keys: <code>uvx icelens --demo</code> has the rest.");
+    }
+    hover = hovered(before, at, hover, null);
+    if (e.pointerType !== "mouse") hover = mouse = null;
+    render();
+  });
+  fig.querySelectorAll(".keypad button").forEach((b) => b.addEventListener("click", () => {
+    takeOver(); load().then(() => press(b.dataset.key, true));
+  }));
+  tabs.forEach((tab, k) => tab.addEventListener("click", () => { touring = false; go(k, false); }));
   fig.querySelector('[role="tablist"]').addEventListener("keydown", (e) => {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
-    if (step) { e.preventDefault(); stopped = true; show(at + step, true); }
+    const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (d) { e.preventDefault(); touring = false; go(chapter + d, false); tabs[chapter].focus(); }
   });
-  toggle.addEventListener("click", () => { stopped = !stopped; if (!stopped) show(at + 1); else schedule(); });
-  fig.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tour-toggle")) stop(); });
-  fig.querySelectorAll(".scene").forEach((panel) => panel.addEventListener("pointerenter", stop));
+  toggle.addEventListener("click", () => { touring = !touring; if (touring) go(chapter + 1, true); else { run++; schedule(); } });
   fig.addEventListener("pointerover", (e) => {
-    const hit = e.target.closest("[data-n]");
-    const panel = e.target.closest(".scene");
-    if (!panel) return;
-    panel.querySelectorAll("[data-n]").forEach((el) => el.classList.toggle("on", !!hit && el.dataset.n === hit.dataset.n));
+    const on = e.target.closest("[data-n]");
+    fig.querySelectorAll("[data-n]").forEach((el) => el.classList.toggle("on", !!on && el.dataset.n === on.dataset.n));
   });
-  fig.addEventListener("pointerleave", () => fig.querySelectorAll("[data-n].on").forEach((el) => el.classList.remove("on")));
-  new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; schedule(); }, { threshold: 0.4 }).observe(fig);
-  document.addEventListener("visibilitychange", schedule);
-  show(0);
+  new IntersectionObserver(([entry]) => {
+    inView = entry.isIntersecting;
+    if (inView) load();
+    if (inView && touring && !fig.classList.contains("playing") && pins.innerHTML) schedule();
+    else if (!inView) { clearTimeout(timer); fig.classList.remove("playing"); }
+  }, { threshold: 0.4 }).observe(fig);
+  document.addEventListener("visibilitychange", () => { if (pins.innerHTML) schedule(); });
+  // The page's theme is the terminal's: redraw in the other one's colours when it changes.
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  select(0);
 })();
 </script>"""
 
 
-def screenshot_figure(shot: dict[str, Any]) -> str:
-    """The home page's walk through the app: a labelled screen per scene, in both themes.
+def walk_figure(walk: dict[str, Any]) -> str:
+    """The home page's terminal: the tour's first chapter drawn in, in both themes, ready
+    before any script runs.
 
-    `shot` is `scripts/screenshot.py`'s JSON. The labels sit at the row and column where the
-    text they point at was found, in the screen's own character cells, so they stay on it at
-    any width. Without JavaScript the scenes are shown one under another.
+    `walk` is `scripts/walk.py`'s JSON; the script loads the rest of it as walk.json. Labels sit
+    at the row and column where the text they point at was found, in the screen's own character
+    cells, so they stay on it at any width.
     """
-    def screen(scene: dict[str, Any], theme: str) -> str:
-        match = re.fullmatch(r"<style>(.*)</style><pre>(.*)</pre>", scene[theme]["html"], re.S)
-        if match is None:
-            raise BuildError("the screenshot is not the HTML it was expected to be")
-        # Rich names its classes r1, r2 ... in every screen alike: each set is kept to its own.
-        scope = f"shot-{scene['name']}-{theme}"
-        style = re.sub(r"(^|\n)\.r(\d+) ", rf"\1.{scope} .r\2 ", match.group(1))
-        return f'<style>{style}</style><pre class="shot-{theme} {scope}" aria-hidden="true">{match.group(2)}</pre>'
+    first = walk["tour"][0]
 
-    tabs, panels = [], []
-    for n, scene in enumerate(shot["scenes"], 1):
-        name, title = scene["name"], html.escape(scene["title"])
-        tabs.append(
-            f'<button type="button" role="tab" id="tab-{name}" aria-controls="scene-{name}" aria-selected="false">'
-            f'<span class="n">{n}</span>{title}<i class="progress" aria-hidden="true"></i></button>'
-        )
-        pins = "".join(
-            f'<span class="pin" style="--row:{row};--col:{col};--i:{k}" data-n="{k}"><b>{k}</b></span>'
-            for k, (row, col) in enumerate(scene["dark"]["places"], 1)
-        )
-        keys = "".join(
-            f'<kbd style="--i:{k}">{html.escape(KEY_LABELS.get(str(key), str(key)))}</kbd>' for k, key in enumerate(scene["keys"])
-        )
-        pressed = f'<span class="pressed"><span>pressed</span>{keys}</span>' if keys else ""
-        items = "".join(f'<li data-n="{k}">{note}</li>' for k, note in enumerate(scene["notes"], 1))
-        panels.append(f"""<div class="scene" id="scene-{name}" role="tabpanel" aria-labelledby="tab-{name}">
-        <div class="window">
-          <div class="bar"><i></i><i></i><i></i><span class="title">icelens --demo</span>{pressed}</div>
-          <div class="shot-scroll"><div class="shot-screen" role="img" aria-label="icelens: {title}">
-            {screen(scene, "dark")}{screen(scene, "light")}<div class="pins" aria-hidden="true">{pins}</div>
-          </div></div>
-        </div>
-        <ol class="callouts">{items}</ol>
-      </div>""")
-    return f"""<figure class="shot" data-tour>
-      <div class="scenes"><div role="tablist" aria-label="A walk through icelens">{"".join(tabs)}</div>
+    def screen(screens: dict[str, Any], prefix: str) -> str:
+        def line(i: int) -> str:
+            return "".join(
+                f'<span class="{prefix}{style}">{html.escape(text, quote=False)}</span>' if screens["styles"][style]
+                else html.escape(text, quote=False)
+                for text, style in screens["lines"][i]
+            )
+        return "\n".join(line(i) for i in screens["states"][first["state"]])
+
+    styles = "".join(f".walk .{prefix}{n}{{{css}}}" for prefix, screens in (("d", walk), ("l", walk["light"]))
+                     for n, css in enumerate(screens["styles"]) if css)
+    tabs = "".join(
+        f'<button type="button" role="tab" aria-selected="false"><span class="n">{n}</span>'
+        f'{html.escape(chapter["title"])}<i class="progress" aria-hidden="true"></i></button>'
+        for n, chapter in enumerate(walk["tour"], 1)
+    )
+    pins = "".join(
+        f'<span class="pin" style="--row:{row};--col:{col};--i:{k}" data-n="{k + 1}"><b>{k + 1}</b></span>'
+        for k, (row, col) in enumerate(first["places"])
+    )
+    notes = "".join(f'<li data-n="{k}">{note}</li>' for k, note in enumerate(first["notes"], 1))
+    keys = [("ArrowLeft", "&larr;"), ("ArrowUp", "&uarr;"), ("ArrowDown", "&darr;"), ("ArrowRight", "&rarr;"),
+            ("Enter", "Enter"), (",", ","), (".", "."), ("u", "u"), ("?", "?"), ("Escape", "Esc")]
+    pad = "".join(f'<button type="button" data-key="{html.escape(k)}">{label}</button>' for k, label in keys)
+    return f"""<figure class="shot" data-walk="walk.json">
+      <div class="scenes"><div role="tablist" aria-label="A tour of icelens">{tabs}</div>
         <button type="button" class="tour-toggle" aria-pressed="true">Pause</button></div>
-      {"".join(panels)}
+      <div class="window">
+        <div class="bar"><i></i><i></i><i></i><span class="title">icelens --demo</span><span class="try-chip" aria-hidden="true">Click the screen, then use the keys</span><span class="pressed" aria-hidden="true"></span></div>
+        <div class="shot-scroll"><div class="shot-screen walk" tabindex="0" role="application"
+          aria-label="icelens on a demo table. Arrow keys move the cursor, Enter pins a snapshot, 1 to 9 switch panes, comma and full stop step through commits, u returns to now, question mark lists the keys.">
+          <style>{styles}</style><pre class="t-dark" aria-hidden="true">{screen(walk, "d")}</pre><pre class="t-light" aria-hidden="true">{screen(walk["light"], "l")}</pre>
+          <div class="pins" aria-hidden="true">{pins}</div>
+        </div></div>
+      </div>
+      <p class="walk-hint" role="status" hidden></p>
+      <div class="keypad" aria-label="Keys">{pad}</div>
+      <ol class="callouts">{notes}</ol>
+      <template class="free"><li class="free-note">Your turn. The arrow keys move the cursor and the guide follows it;
+        <kbd>Enter</kbd> on a snapshot, or a click on the cell under the cursor, pins it; <kbd>1</kbd>&ndash;<kbd>9</kbd>, or a click on a
+        pane&rsquo;s name, switch panes; <kbd>,</kbd> and <kbd>.</kbd> step through commits; <kbd>u</kbd> comes back to now;
+        <kbd>?</kbd> lists every key. Every screen is one the app drew; typing a query or a filter needs the app itself:
+        <code>uvx icelens --demo</code>.</li></template>
     </figure>
-    {TOUR_SCRIPT}"""
+    {WALK_SCRIPT}"""
 
 
-def fill(page: str, text: str, shot: dict[str, Any] | None = None) -> str:
+def fill(page: str, text: str, walk: dict[str, Any] | None = None) -> str:
     """A hand-written page from site/, with the shared header and footer in their placeholders.
 
     `<!--#header-->` and `<!--#footer-->`; `<!--#header docs/index.html-->` marks that link current.
@@ -555,10 +811,10 @@ def fill(page: str, text: str, shot: dict[str, Any] | None = None) -> str:
         "</head>", social(page, html.unescape(title.group(1)), html.unescape(description.group(1))) + "\n</head>", 1,
     )
     text = text.replace("</head>", THEME_SCRIPT + "\n</head>", 1)
-    if "<!--#screenshot-->" in text:
-        if shot is None:
-            raise BuildError(f"{page} has a screenshot and none was captured")
-        text = text.replace("<!--#screenshot-->", screenshot_figure(shot))
+    if "<!--#walk-->" in text:
+        if walk is None:
+            raise BuildError(f"{page} has the walk-through and none was captured")
+        text = text.replace("<!--#walk-->", walk_figure(walk))
     return text.replace("<!--#footer-->", footer(""))
 
 
@@ -652,33 +908,38 @@ def prepare(out: Path) -> None:
     out.mkdir(parents=True)
 
 
-def capture_screenshot() -> dict[str, Any]:
-    """The home page's screenshot of the demo (scripts/screenshot.py), in both themes."""
+def capture_walk() -> dict[str, Any]:
+    """The home page's walk-through of the demo (scripts/walk.py): every screen, and the keys between."""
     uv = shutil.which("uv")
     if uv is None:
-        raise BuildError("uv is not on PATH; it runs the app to capture the home page's screenshot")
+        raise BuildError("uv is not on PATH; it runs the app to capture the home page's walk-through")
     try:
         run = subprocess.run(
-            [uv, "run", "--quiet", "python", "scripts/screenshot.py", "120", "36"],
-            cwd=ROOT, capture_output=True, text=True, timeout=300,
+            [uv, "run", "--quiet", "python", "scripts/walk.py", "120", "36"],
+            # Seven minutes on a laptop, for both themes at once; a CI runner may take twice that.
+            cwd=ROOT, capture_output=True, text=True, timeout=1800,
         )
     except subprocess.TimeoutExpired as e:
-        raise BuildError("capturing the screenshot took more than five minutes") from e
+        raise BuildError("capturing the walk-through took more than half an hour") from e
     if run.returncode != 0:
         tail = (run.stderr or run.stdout).strip().splitlines()
-        raise BuildError(f"capturing the screenshot failed: {tail[-1] if tail else f'exit {run.returncode}'}")
-    shot = json.loads(run.stdout)
-    shown = json.dumps(shot)
+        raise BuildError(f"capturing the walk-through failed: {tail[-1] if tail else f'exit {run.returncode}'}")
+    return json.loads(run.stdout)
+
+
+def publishable(walk: dict[str, Any]) -> str:
+    """The walk as the page loads it, refused if a screen shows this machine's own paths."""
+    shown = json.dumps(walk, ensure_ascii=False, separators=(",", ":"))
     leaked = [m for m in ("/Users/", "/home/", "/var/folders/", "\\\\Users\\\\") if m in shown]
     if leaked:
-        raise BuildError(f"the screenshot shows a local path ({leaked[0]}); it would be published")
-    return shot
+        raise BuildError(f"the walk-through shows a local path ({leaked[0]}); it would be published")
+    return shown
 
 
 # The files a page loads by a fixed name. A browser may keep one from an earlier build (GitHub
 # Pages says ten minutes; a server that says nothing leaves it to the browser's guess), so every
 # reference to them carries the build's stamp, and a new build is a new URL.
-STAMPED = ("style.css",)
+STAMPED = ("style.css", "walk.json")
 
 
 def stamp(out: Path) -> str:
@@ -698,15 +959,16 @@ def stamp(out: Path) -> str:
     return version
 
 
-def build(out: Path) -> list[str]:
+def build(out: Path, walk: dict[str, Any] | None = None) -> list[str]:
     site = ROOT / "site"
     if not (site / "index.html").is_file():
         raise BuildError(f"{site / 'index.html'} is missing")
     prepare(out)
     shutil.copytree(site, out, dirs_exist_ok=True)
-    shot = capture_screenshot()
+    walk = capture_walk() if walk is None else walk  # the tests bring a smaller one
+    (out / "walk.json").write_text(publishable(walk), encoding="utf-8")
     for page in out.glob("*.html"):
-        page.write_text(fill(page.name, page.read_text(encoding="utf-8"), shot), encoding="utf-8")
+        page.write_text(fill(page.name, page.read_text(encoding="utf-8"), walk), encoding="utf-8")
     (out / "docs").mkdir(exist_ok=True)
     made = []
     for source, (page, _) in DOCS.items():

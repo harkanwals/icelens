@@ -458,10 +458,10 @@ kbd {
   padding: 0.6rem 0.85rem;
   background: var(--term-bar);
   border-bottom: 1px solid var(--term-border);
-  color: #7f93a3;
+  color: var(--bar-ink, #7f93a3);
   font: 0.78rem var(--mono);
 }
-.window .bar i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #2a3a48; flex: none; }
+.window .bar i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--bar-dot, #2a3a48); flex: none; }
 .window .bar .title { margin-left: 0.5rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .window pre.term { margin: 0; border: 0; border-radius: 0; }
 .window figcaption { padding: 0.65rem 1rem; color: #8ea2b4; background: var(--term-bar); border-top: 1px solid var(--term-border); margin: 0; }
@@ -547,36 +547,76 @@ main.doc {
 .prose h2[id], .prose h3[id] { scroll-margin-top: 5rem; }
 .source { font-size: 0.85rem; color: var(--muted); }
 
-/* The home page's labelled screenshot. The screen is 120 columns of text: its font is sized to
-   the box (1ch is 0.6em in these fonts, so 120ch is 72em), and each label sits at the row and
-   column of the text it points at, in the same character units. */
-.shot { --shot-bg: #f6f9fb; --pin-ink: var(--accent-text); max-width: var(--wide); margin: 0 auto; text-align: left; }
+/* The home page's walk-through: a terminal of 120 columns. Its font is sized to the box (1ch is
+   0.6em in these fonts, so 120ch is 72em), and each label sits at the row and column of the text
+   it points at, in the same character units. It is drawn in the page's theme: both are captured. */
+.shot { --shot-bg: #f6f9fb; --shot-ink: #0f1b26; --pin: #0a7ea4; --pin-ink: #ffffff; --term-bg: #f6f9fb; --term-bar: #e6eef4; --term-border: #c3d1dc; --bar-ink: #52677a; --bar-dot: #c3d1dc; max-width: var(--wide); margin: 0 auto; text-align: left; }
 .shot-scroll { overflow-x: auto; }
-.shot-screen { position: relative; container-type: inline-size; min-width: 40rem; background: var(--shot-bg); }
+.shot-screen { position: relative; container-type: inline-size; min-width: 40rem; background: var(--shot-bg); color: var(--shot-ink); }
+.shot-screen pre.t-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .shot { --shot-bg: #0b141c; --shot-ink: #e4ecf2; --pin: #6fd6f7; --pin-ink: #0b141c; --term-bg: #0b141c; --term-bar: #0e1720; --term-border: #1c2b38; --bar-ink: #7f93a3; --bar-dot: #2a3a48; }
+  :root:not([data-theme="light"]) .shot-screen pre.t-dark { display: block; }
+  :root:not([data-theme="light"]) .shot-screen pre.t-light { display: none; }
+}
+:root[data-theme="dark"] .shot { --shot-bg: #0b141c; --shot-ink: #e4ecf2; --pin: #6fd6f7; --pin-ink: #0b141c; --term-bg: #0b141c; --term-bar: #0e1720; --term-border: #1c2b38; --bar-ink: #7f93a3; --bar-dot: #2a3a48; }
+:root[data-theme="dark"] .shot-screen pre.t-dark { display: block; }
+:root[data-theme="dark"] .shot-screen pre.t-light { display: none; }
+.shot-screen:focus { outline: none; }
+.shot .window:focus-within { box-shadow: 0 0 0 2px var(--accent); }
 .shot-screen pre, .shot-screen .pins, .shot-screen .pin {
   font-family: var(--mono); font-size: 1.36cqw; line-height: 1.2; letter-spacing: 0;
 }
-.shot-screen pre { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; white-space: pre; overflow: hidden; }
-.shot-screen pre.shot-dark { display: none; }
+.shot-screen pre { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; white-space: pre; overflow: hidden; cursor: pointer; }
 .shot-screen .pins { position: absolute; inset: 0; pointer-events: none; }
 .shot-screen .pin { position: absolute; left: calc(var(--col) * 1ch); top: calc((var(--row) + 0.5) * 1.2em); }
 .shot-screen .pin b {
   position: absolute; transform: translate(-50%, -50%);
   width: 1.4rem; height: 1.4rem; border-radius: 50%;
-  background: var(--accent); color: var(--pin-ink); box-shadow: 0 0 0 2px var(--shot-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
+  background: var(--pin); color: var(--pin-ink); box-shadow: 0 0 0 2px var(--shot-bg), 0 2px 6px rgba(0, 0, 0, 0.35);
   font: 700 0.78rem/1.4rem var(--sans); text-align: center;
   pointer-events: auto; cursor: default; transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.shot-screen .pin.on b { transform: translate(-50%, -50%) scale(1.3); box-shadow: 0 0 0 2px var(--shot-bg), 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
-.scene + .scene { margin-top: 2.5rem; }
-.scene .callouts { margin-top: 1.25rem; }
+.shot-screen .pin.on b { transform: translate(-50%, -50%) scale(1.3); box-shadow: 0 0 0 2px var(--shot-bg), 0 0 0 6px color-mix(in srgb, var(--pin) 35%, transparent); }
+.shot.live .pin b { animation: pin-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(0.2s + var(--i) * 0.2s); }
+@keyframes pin-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } }
+
+/* What the page says about itself - a key or a click it does not follow - outside the screen,
+   so it is never mistaken for the app's own toasts, which are drawn in the screen. */
+.walk-hint { margin: 0.6rem 0 0; font-size: 0.88rem; color: var(--muted); text-align: center; }
+.walk-hint[hidden] { display: none; }
+/* Until the first key or click: where to start. */
+.try-chip {
+  margin-left: auto; padding: 0.15rem 0.6rem; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); font: 600 0.72rem var(--sans); white-space: nowrap;
+}
+.try-chip + .pressed { margin-left: 0.5rem; }
+.shot:not(.live) .try-chip, .shot.used .try-chip { display: none; }
+
+/* The keys just pressed, in the window's title bar: how the tour got where it is. */
+.window .bar .pressed { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; min-height: 1.3rem; }
+.window .bar .pressed kbd { font-size: 0.75rem; animation: key-in 0.25s ease both; }
+@keyframes key-in { from { opacity: 0; transform: translateY(-0.4rem); } }
+
+/* Keys to tap, for a screen with no keyboard. */
+.keypad { display: none; }
+.shot.live .keypad { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; margin: 0.8rem 0 0; }
+.keypad button {
+  min-width: 2.6rem; padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface, transparent); color: var(--text); font: 600 0.85rem var(--mono); cursor: pointer;
+}
+.keypad button:hover { border-color: var(--accent); }
+
+.callouts { margin-top: 1.25rem; }
 .callouts li { transition: color 0.15s ease; }
 .callouts li.on { color: var(--text); }
+.callouts.free { display: block; }
+.callouts .free-note { padding-left: 0; }
+.callouts .free-note::before { content: none; }
 
-/* With the tour's script: one scene at a time, chosen from the strip above it. */
+/* With the script: chapters of the tour, chosen from the strip above the terminal. */
 .scenes { display: none; }
 .shot.live .scenes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem; margin-bottom: 0.9rem; }
-.shot.live .scene + .scene { margin-top: 0; }
 .scenes [role="tablist"] { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .scenes [role="tab"], .tour-toggle {
   position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 0.45rem;
@@ -587,39 +627,21 @@ main.doc {
 .scenes [role="tab"][aria-selected="true"] { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .scenes [role="tab"]:hover, .tour-toggle:hover { color: var(--text); }
 .tour-toggle { font-size: 0.8rem; padding: 0.3rem 0.75rem; }
-/* How long until the next scene: fills while the tour plays. */
+/* How long until the next chapter: fills while the tour plays. */
 .scenes .progress { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
 .shot.playing [aria-selected="true"] .progress { animation: tour-fill 9s linear forwards; }
 @keyframes tour-fill { to { transform: scaleX(1); } }
-/* Each scene arrives: the screen fades in, then the keys that reached it, then its labels. */
-.shot.live .scene .shot-screen { animation: scene-in 0.35s ease both; }
-.shot.live .scene .pin b { animation: pin-in 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; animation-delay: calc(0.35s + var(--i) * 0.22s); }
-.shot.live .scene .pressed kbd { animation: key-in 0.3s ease both; animation-delay: calc(0.1s + var(--i) * 0.18s); }
-@keyframes scene-in { from { opacity: 0.25; } }
-@keyframes pin-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } }
-@keyframes key-in { from { opacity: 0; transform: translateY(-0.4rem); } }
-.pressed kbd { display: inline-block; }
-.window .bar .pressed { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; }
-.window .bar .pressed kbd { font-size: 0.75rem; }
 .callouts {
-  counter-reset: callout; list-style: none; margin: 0; padding: 0;
+  counter-reset: callout; list-style: none; padding: 0;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.85rem 1.75rem;
   font-size: 0.92rem; color: var(--muted);
 }
 .callouts li { counter-increment: callout; position: relative; padding-left: 2.1rem; margin: 0; }
 .callouts li::before {
   content: counter(callout); position: absolute; left: 0; top: 0.05rem;
-  width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--accent); color: var(--pin-ink);
+  width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--accent); color: var(--accent-text);
   font: 700 0.78rem/1.4rem var(--sans); text-align: center;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .shot-screen pre.shot-dark { display: block; }
-  :root:not([data-theme="light"]) .shot-screen pre.shot-light { display: none; }
-  :root:not([data-theme="light"]) .shot { --shot-bg: #0b141c; --pin-ink: #0b141c; }
-}
-:root[data-theme="dark"] .shot-screen pre.shot-dark { display: block; }
-:root[data-theme="dark"] .shot-screen pre.shot-light { display: none; }
-:root[data-theme="dark"] .shot { --shot-bg: #0b141c; --pin-ink: #0b141c; }
 .hero .after-demo { margin: 2rem 0 4.5rem; }
 .waterline-section { padding-bottom: 0; overflow: hidden; }
 .center { text-align: center; }

@@ -35,7 +35,7 @@ except uv (with `pip --user`, if uv is missing) and DuckDB's extensions (into `~
 | the suite against them | `set -a; . tests/compose/live.env; set +a; uv run pytest -q` | `make test-live` |
 | stop them | `docker compose -f tests/compose/stack.yml down -v` | `make live-down` |
 | redraw the TUI snapshots after an intended change | `uv run pytest -q tests/test_snapshots.py --snapshot-update` | `make snapshots` |
-| build the website into `_site/` (pages, docs, the home page's screenshot) | `python3 scripts/build_site.py` | `make site` |
+| build the website into `_site/` (pages, docs, the home page's walk-through) | `python3 scripts/build_site.py` | `make site` |
 | run the app on a throwaway catalog | `uv run icelens --demo` (`--v3` for format-version 3) | |
 | a throwaway catalog for another engine | `uv run icelens --demo --v3 --serve` (prints how to connect) | |
 
@@ -55,6 +55,9 @@ reformatted file buries the change in its diff. `ruff check` is the rule.
   18282 and 19000. Without it, the attach suite runs against icelens's own REST catalog instead,
   so it still runs everywhere. `ICELENS_REQUIRE_LIVE_CATALOGS=1` (CI's live job) turns "no catalog
   answered" into a failure.
+- **Chrome and Node 22 or newer** (`tests/test_walk_page.py`): drives the built home page and
+  checks its script draws what `scripts/walk.py`'s rules draw. Skips without them; set `CHROME`
+  if Chrome is somewhere unusual.
 - **Network**: none, once the extensions are installed. A test must never reach the internet.
 
 ## Where things are
@@ -70,8 +73,11 @@ reformatted file buries the change in its diff. `ruff check` is the rule.
 - `src/icelens/app.py`, `welcome.py`, `icelens.tcss`: the Textual UI. `cli.py`: flags and headless
   output. `demo.py`: the demo tables. `terms.py`: the explanations the guide rail shows.
 - `site/`: the website's hand-written pages. `scripts/build_site.py` renders the docs into it,
-  and `scripts/screenshot.py` drives the app through the demo table for the home page's
-  labelled walk (`SCENES`: the keys each scene presses, and what its labels point at).
+  and `scripts/walk.py` draws every screen of the home page's walk-through - each pane, each
+  cell, each commit pinned, in both themes - with the real app; the page replays them, keys and
+  clicks, with no Python. `tests/test_walk.py` presses the same keys and clicks in the real app
+  and checks every screen matches, styles included. The walk's rules (`step`, `click`, `compose`)
+  are in walk.py and again in the page's script in `build_site.py`: change both together.
   `.github/workflows/pages.yml` builds and deploys it on `main`.
 - `tests/conftest.py`: the fixtures. `lake` is a SQLite catalog with real history, `v3_lake` the
   same at v3, `attachable` a REST catalog DuckDB can attach (live if configured, local if not),
