@@ -19,16 +19,16 @@
 │                                  ││                                                                                  │
 │                                  ││                                                                                  │
 │                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
-│                                  ││                                                                                  │
 │                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
 │                                  │╭─ guide ──────────────────────────────────────────────────────────────────────────╮
-│                                  ││ Table metadata (metadata.json)  One immutable JSON file holding everything true  │
-│                                  ││ about the table at one moment.   g for more                                      │
+│                                  ││                                                                                  │
+│                                  ││ Table metadata (metadata.json)  -  One immutable JSON file holding everything    │
+│                                  ││ true about the table at one moment.                                              │
+│                                  ││ Schema list, partition specs, sort orders, properties, every snapshot, and which │
+│                                  ││ snapshot is current. Writes never edit it: a writer reads the current file,      │
+│                                  ││ writes a *new* numbered one, and asks the catalog to swap the pointer. The old   │
+│                                  ││ files stay, which is why the history is readable at all.                         │
+│                                  ││                                                                                  │
 │                                  │╰──────────────────────────────────────────────────────────────────────────────────╯
 ╰──────────────────────────────────╯ sandbox demo (offline, v2) - writing is on (press e)   sql catalog   duckdb,
  q Quit  ? Help  / Filter  r Reload  u Now  x Export  c Copy  w Where  g Guide  l Row ids  ^r Run  ^o Catalo▏^p palette

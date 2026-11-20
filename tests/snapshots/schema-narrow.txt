@@ -6,15 +6,15 @@
 │     └── orders                                           │
 ╰──────────────────────────────────────────────────────────╯
 ╭─ demo.orders ────────────────────────────────────────────╮
-│ 1 Overview  2 Schema  3 Data  4 Snapshots  5 Commit  6 Ma│
-│━━━━━━━━━━━━╸━━━━━━━━╺━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━│
-│ schema id 1 of [0, 1] - 6 fields including nested        │
-│                                                          │
 ╰──────────────────────────────────────────────────────────╯
 ╭─ guide ──────────────────────────────────────────────────╮
-│ Table metadata (metadata.json)  One immutable JSON file  │
-│ holding everything true about the table at one moment.   │
-│ g for more                                               │
+│                                                          │
+│ Table metadata (metadata.json)  -  One immutable JSON    │
+│ file holding everything true about the table at one      │
+│ moment.                                                  │
+│ Schema list, partition specs, sort orders, properties,   │
+│ every snapshot, and which snapshot is current. Writes    │
+│ never edit it: a writer reads the current file, writes a │
+│                                                          │
 ╰──────────────────────────────────────────────────────────╯
- sandbox demo (offline, v2) - writing is on (press e)   sql
  q Quit  ? Help  / Filter  r Reload  u Now  x Ex▏^p palette

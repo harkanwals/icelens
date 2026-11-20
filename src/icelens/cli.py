@@ -218,6 +218,12 @@ def build_parser() -> _Parser:
         help="append what icelens asks the catalog, the store and DuckDB, with timings, to FILE; "
         "secrets scrubbed. Also ICELENS_TRACE=FILE",
     )
+    parser.add_argument(
+        "--skill",
+        action="store_true",
+        help="print the agent skill (SKILL.md) that teaches a coding agent to drive icelens, and exit. "
+        "Install it with: mkdir -p ~/.claude/skills/icelens && icelens --skill > ~/.claude/skills/icelens/SKILL.md",
+    )
     parser.add_argument("--version", action="store_true", help="print the version and exit")
     return parser
 
@@ -396,6 +402,13 @@ def _main(argv: list[str] | None) -> int:
         from importlib.metadata import version
 
         print(version("icelens"))
+        return 0
+
+    if args.skill:
+        # Shipped inside the package, so the skill an agent reads matches the flags it calls.
+        from importlib.resources import files
+
+        sys.stdout.write((files("icelens") / "skills" / "icelens" / "SKILL.md").read_text(encoding="utf-8"))
         return 0
 
     if args.explain is not None:

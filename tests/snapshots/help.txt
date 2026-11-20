@@ -25,14 +25,14 @@
 │       │    l            row lineage: _row_id and _last_updated_sequence_number beside the rows.          ▄▄  │       │
 │       │                 v3 only, and no engine shows them unless you name them.                              │       │
 │       │                                                                                                      │       │
-│       │  The guide                                                                                           │       │
-│       │    g            the rail at the bottom: a line → the full entry → off                                │       │
+│       │  The guide                                                                                           │───────╯
+│       │    g            the rail at the bottom: the full entry → a line → off                                │───────╮
 │       │    It explains whatever the cursor is on and changes as you move: the pane, the column,              │       │
-│       │    the row, or the value in the cell. `icelens --explain <term>` is the same corpus.                 │       │
+│       │    the row, or the value in the cell. `icelens --explain <term>` is the same corpus.                 │out    │
 │       │                                                                                                      │       │
-│       │  Reading the panes                                                                                   │       │
-│       │    Overview   what metadata.json says about the table                                                │───────╯
-│       │    Schema     the schema of the viewed snapshot; ids, not names, are the identity                    │───────╮
+│       │  Reading the panes                                                                                   │ame is │
+│       │    Overview   what metadata.json says about the table                                                │ma id  │
+│       │    Schema     the schema of the viewed snapshot; ids, not names, are the identity                    │       │
 │       │  escape to close, ↑ ↓ to scroll                                                                      │       │
 │       │                                                                                                      │       │
 │       ╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯───────╯

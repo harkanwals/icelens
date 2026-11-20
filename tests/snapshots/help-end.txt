@@ -10,7 +10,7 @@
 │       │                 v3 only, and no engine shows them unless you name them.                              │       │
 │       │                                                                                                      │       │
 │       │  The guide                                                                                           │       │
-│       │    g            the rail at the bottom: a line → the full entry → off                                │       │
+│       │    g            the rail at the bottom: the full entry → a line → off                                │       │
 │       │    It explains whatever the cursor is on and changes as you move: the pane, the column,              │       │
 │       │    the row, or the value in the cell. `icelens --explain <term>` is the same corpus.             ▄▄  │       │
 │       │                                                                                                      │       │
@@ -25,14 +25,14 @@
 │       │    Layout     the pointer chain: metadata → snapshot → manifest list → manifests → files             │       │
 │       │    Writer     sandbox only: write statements, and a ledger of what each one committed                │       │
 │       │                                                                                                      │       │
-│       │  Writing (sandbox only)                                                                              │       │
-│       │    e            the Writer pane                 ctrl+r    commit what you typed                      │       │
+│       │  Writing (sandbox only)                                                                              │───────╯
+│       │    e            the Writer pane                 ctrl+r    commit what you typed                      │───────╮
 │       │    escape       leave the editor, then 1 … 9 to read what the write did                              │       │
-│       │    A sandbox is the only thing icelens will write to. Everywhere else it reads.                      │       │
+│       │    A sandbox is the only thing icelens will write to. Everywhere else it reads.                      │out    │
 │       │    `--sandbox` makes a local v2 catalog of its own. `--sandbox --rest` puts one in a                 │       │
-│       │    namespace of a catalog you run, where DuckDB writes v3: deletion vectors, row                     │       │
-│       │    lineage, UPDATE and MERGE - and where it can write in that namespace and no other.                │───────╯
-│       │                                                                                                      │───────╮
+│       │    namespace of a catalog you run, where DuckDB writes v3: deletion vectors, row                     │ame is │
+│       │    lineage, UPDATE and MERGE - and where it can write in that namespace and no other.                │ma id  │
+│       │                                                                                                      │       │
 │       │  escape to close, ↑ ↓ to scroll                                                                      │       │
 │       │                                                                                                      │       │
 │       ╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯───────╯
