@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+from rich.cells import cell_len
 from rich.markup import escape
 from rich.text import Text
 from textual import events, on, work
@@ -160,7 +161,12 @@ class Grid(DataTable):
             # Text, not str: DataTable runs a str label through `Text.from_markup`, and a
             # column called `[/]` - a legal Iceberg field name - is a MarkupError, i.e. a
             # pane that will not draw at all.
-            self.add_column(Text(safe(name)) if name.strip() else Text(" "), key=f"c{index}")
+            label = Text(safe(name)) if name.strip() else Text(" ")
+            # The width is given, not left to DataTable. It measures a column's cells when it is
+            # next idle, and a repaint that gets in first draws each column as wide as its heading
+            # and keeps that drawing: on a busy machine the Overview opened as `format v │ 2`.
+            widest = max([_cells(label), *(_cells(row[index]) for row in rows)])
+            self.add_column(label, width=widest, key=f"c{index}")
         for index, row in enumerate(rows):
             self.add_row(*row, key=f"r{index}")
         if rows:
@@ -175,6 +181,11 @@ class Grid(DataTable):
         if self.source is None or row >= self.source.num_rows:
             return None
         return pylist(self.source.slice(row, 1).select([column]))[0][self.source.column_names[column]]
+
+
+def _cells(text: Text) -> int:
+    """How many terminal cells the widest line of a grid cell takes."""
+    return max(cell_len(line) for line in text.plain.split("\n"))
 
 
 def _safe_name(text: str) -> str:

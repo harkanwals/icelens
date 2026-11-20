@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pyarrow as pa
 import pytest
 from harness import note, rail, rows, settle, unbroken
 from textual.coordinate import Coordinate
@@ -471,3 +472,17 @@ async def test_a_narrow_screen_stacks_the_catalog_above_the_table(app: IcelensAp
         await settle(app, pilot)
         grid = app.query_one("#grid-overview", Grid)
         assert max(column.content_width for column in grid.columns.values()) <= 20
+
+
+async def test_a_grid_is_as_wide_as_its_cells_the_moment_it_is_filled(app: IcelensApp) -> None:
+    # DataTable measures cells when it is next idle. A repaint that got in first drew every column
+    # as wide as its heading and kept that drawing: the Overview opened as `format v | 2`.
+    async with app.run_test() as pilot:
+        await settle(app, pilot)
+        grid = app.query_one("#grid-overview", Grid)
+        grid.show(pa.table({"property": ["format version", "location"], "value": ["2", "file:///tmp/warehouse/demo/events"]}), 44)
+        widths = [column.get_render_width(grid) - 2 * grid.cell_padding for column in grid.columns.values()]
+        assert widths == [len("format version"), len("file:///tmp/warehouse/demo/events")]  # no idle yet
+        await pilot.pause()
+        assert [column.get_render_width(grid) - 2 * grid.cell_padding for column in grid.columns.values()] == widths
+
