@@ -49,6 +49,62 @@ def test_a_v3_sandbox_writes_v3_with_duckdb(capsys: pytest.CaptureFixture[str], 
         lake.close()
 
 
+def test_a_create_as_writes_nothing_where_icelens_was_started(
+    capsys: pytest.CaptureFixture[str], where: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # DuckDB's iceberg extension, given CREATE TABLE … AS whole, makes a `data` directory in the
+    # current one and fails where it cannot. With a file of that name in the way it could not.
+    started = tmp_path / "started"
+    started.mkdir()
+    (started / "data").write_text("mine")
+    monkeypatch.chdir(started)
+    args = ["--sandbox", "lesson", "--v3", *where]
+    [made] = _ledger(capsys, args, "CREATE TABLE demo.sales AS SELECT i AS id, 'x' AS \"we ird\", 1.5::DECIMAL(10, 2) AS d FROM range(1, 11) t(i)")
+    assert (made["kind"], made["operation"], made["added"]) == ("create", "append", 10)
+    assert [p.name for p in started.iterdir()] == ["data"] and (started / "data").read_text() == "mine"
+    described = json.loads(run(capsys, [*args, "--pane", "schema", "demo.sales", "--json"]).out)["rows"]
+    assert [row["name"] for row in described][:3] == ["id", "we ird", "d"]  # then v3's row-lineage fields
+    # A comment after the query is still the query's: it used to swallow the end of the statement
+    # icelens wraps it in, and the CREATE went to DuckDB whole after all.
+    [noted] = _ledger(capsys, args, "CREATE TABLE demo.noted AS SELECT 1 AS id -- one row")
+    assert noted["added"] == 1 and [p.name for p in started.iterdir()] == ["data"]
+    # Rows that will not go in leave no empty table behind: the statement failed, all of it.
+    failed = run(capsys, [*args, "--write", "CREATE TABLE demo.bad AS SELECT CAST(v AS INTEGER) AS id FROM (VALUES ('x')) t(v)"])
+    assert failed.code == 1 and "Traceback" not in failed.err
+    assert "bad" not in run(capsys, [*args, "--list", "demo"]).out
+
+
+def test_a_table_asked_for_at_v2_is_made_v2_and_reported_as_made(
+    capsys: pytest.CaptureFixture[str], where: list[str], tmp_path: Path,
+) -> None:
+    # The guide says a CREATE is v3 unless it asks for v2. Asking made the table and then exited 1
+    # with "asked for format-version 3 and got v2", so the retry failed on "already exists".
+    args = ["--sandbox", "lesson", "--v3", *where]
+    [made] = _ledger(capsys, args, 'CREATE TABLE demo.old WITH ("format-version" = 2) AS SELECT range AS id FROM range(5)')
+    assert (made["kind"], made["added"]) == ("create", 5)
+    lake = Lake(sandbox_target("lesson", tmp_path / "sandboxes"))
+    try:
+        assert lake.table("demo.old").metadata.format_version == 2
+    finally:
+        lake.close()
+
+
+def test_sql_asks_for_a_table_by_name_and_never_lists_the_namespace(
+    capsys: pytest.CaptureFixture[str], where: list[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A login may load a table it is not allowed to list, and a big namespace is pages of listing.
+    args = ["--sandbox", "lesson", "--v3", *where]
+    _ledger(capsys, args, "CREATE TABLE demo.sales AS SELECT range AS id FROM range(5)")
+
+    def no_listing(self: Lake, namespace: str) -> list[str]:
+        raise AssertionError(f"listed {namespace}")
+
+    monkeypatch.setattr(Lake, "tables", no_listing)
+    ran = run(capsys, [*args, "--sql", "SELECT count(*) AS n FROM icelens.demo.sales", "--json"])
+    assert ran.code == 0 and json.loads(ran.out)["rows"] == [{"n": 5}]
+    assert run(capsys, [*args, "--sql", "SELECT * FROM icelens.demo.nope", "--json"]).code == 1
+
+
 def test_a_delete_leaves_a_deletion_vector_and_an_update_keeps_the_row_id(
     capsys: pytest.CaptureFixture[str], where: list[str]
 ) -> None:

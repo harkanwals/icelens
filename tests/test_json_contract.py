@@ -726,7 +726,7 @@ SERVE_ROW = {
 def test_serve(tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch) -> None:
     from icelens import cli
 
-    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda stop: None)
+    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda: None)
     ran = run(capsys, ["--sandbox", "contract", "--sandbox-dir", str(tmp_path / "sandboxes"), "--serve", "--json"])
     assert ran.code == 0, ran.err
     envelope(ran.body, "serve", {"note": STR})

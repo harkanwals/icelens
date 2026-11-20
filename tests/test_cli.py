@@ -615,3 +615,51 @@ def test_sql_refuses_to_read_a_local_file(lake: Lake, capsys, tmp_path) -> None:
     assert captured.out == "" and "SECRETLINE" not in captured.err
     message = json.loads(captured.err)["error"]["message"]
     assert "--sql reads the catalog" in message and "--write" not in message  # not a write to redirect
+
+
+
+@pytest.mark.duckdb_extensions
+@pytest.mark.parametrize("sql", [
+    "SELECT * FROM report.csv",
+    'SELECT * FROM "{here}/report"."csv"',
+    'SELECT * FROM "{here}/report".csv',
+    "SELECT * FROM icelens.x.csv",
+    "DESCRIBE report.csv",
+    'WITH a AS (FROM "report.csv"), "report.csv" AS (SELECT 1) FROM a',
+    'WITH RECURSIVE "report.csv" AS (FROM "report.csv" UNION ALL FROM "report.csv" WHERE false) FROM "report.csv"',
+])
+def test_sql_does_not_read_a_file_named_as_a_table(lake: Lake, capsys, tmp_path, monkeypatch, sql: str) -> None:
+    # Each of these returned the file's rows: DuckDB reads a file for any name it cannot find in a
+    # catalog, and none of these names has anything about it that says "file".
+    for name in ("report.csv", "icelens.x.csv"):
+        (tmp_path / name).write_text("col\nFILEMARK\n")
+    monkeypatch.chdir(tmp_path)
+    assert main(argv(lake, "--sql", sql.format(here=tmp_path), "--json")) == 1
+    captured = capsys.readouterr()
+    assert captured.out == "" and "FILEMARK" not in captured.err
+    assert "not a table in this catalog" in json.loads(captured.err)["error"]["message"]
+
+
+@pytest.mark.duckdb_extensions
+def test_sql_finds_the_catalogs_tables_whatever_their_case(lake: Lake, capsys) -> None:
+    for sql in ('SELECT count(*) AS n FROM icelens."demo"."events"', "SELECT count(*) AS n FROM ICELENS.Demo.EVENTS",
+                "WITH c AS (SELECT * FROM icelens.demo.events) SELECT count(*) AS n FROM c"):
+        assert main(argv(lake, "--sql", sql, "--json")) == 0, sql
+        assert json.loads(capsys.readouterr().out)["rows"][0]["n"] > 0
+
+
+def test_a_mistyped_table_is_told_how_tables_are_named(lake: Lake, capsys) -> None:
+    assert main(argv(lake, "--sql", "SELECT * FROM icelens.demo.evnts", "--json")) == 1
+    message = json.loads(capsys.readouterr().err)["error"]["message"]
+    assert message.startswith("icelens.demo.evnts: not a table in this catalog") and 'icelens."namespace"."table"' in message
+
+
+@pytest.mark.parametrize("sql", ["-- how many orders?", ";", " "])
+def test_sql_with_no_statement_in_it_is_refused_in_words(lake: Lake, capsys, sql: str) -> None:
+    # DuckDB answers None to these, and that was an AttributeError and a traceback.
+    code = main(argv(lake, "--sql", sql, "--json"))
+    captured = capsys.readouterr()
+    assert code in (1, 2) and captured.out == "" and "Traceback" not in captured.err
+    if code == 1:
+        assert "nothing to run" in json.loads(captured.err)["error"]["message"]
+

@@ -424,10 +424,17 @@ async def first_frame(width: int, height: int, home: str | Path, dark: bool = Tr
     out: list[str] = []
     session = await start(out.append, width, height, home=home, dark=dark)
     loop = asyncio.get_running_loop()
-    deadline, seen = loop.time() + 30, -1
-    while loop.time() < deadline and len(out) != seen:
+    # Done is the table's pane loaded, nothing still loading, and then quiet - not quiet alone.
+    # The catalog is read in workers, and a pause before one of them longer than the wait used to
+    # end the capture on a half-drawn screen: the tree, and "no table open" where the overview goes.
+    app = session.app
+    deadline, seen, quiet = loop.time() + 30, -1, 0
+    while loop.time() < deadline and quiet < 2:
+        await asyncio.sleep(0.25)
+        loaded = bool(app._cache) or app.ident is None
+        idle = loaded and all(worker.is_finished for worker in app.workers)
+        quiet = quiet + 1 if idle and len(out) == seen else 0
         seen = len(out)
-        await asyncio.sleep(0.5)
     session.exit()
     await asyncio.wait_for(session.task, 10)
     # Everything up to the hand-back: the page keeps showing the frame, so it must not leave

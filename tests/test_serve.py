@@ -147,6 +147,24 @@ def test_duckdb_attaches_with_the_printed_statement_and_writes_v3(home: Path) ->
 
 
 @posix_only
+@pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM])
+def test_a_signal_that_lands_while_the_address_is_printed_still_stops_it(
+    home: Path, capsys, monkeypatch: pytest.MonkeyPatch, sig: int,
+) -> None:
+    # A script reads the address and signals at once, so the signal can arrive before the wait
+    # for it has begun. That was exit 130, the server never told to stop, and no last line.
+    printing = cli._serving_text
+
+    def interrupted(details: dict[str, Any]) -> str:
+        os.kill(os.getpid(), sig)
+        return printing(details)
+
+    monkeypatch.setattr(cli, "_serving_text", interrupted)
+    ran = run(capsys, ["--sandbox", "early", "--sandbox-dir", str(home / "sandboxes"), "--serve"])
+    assert ran.code == 0 and "stopped serving sandbox 'early'" in ran.err and "Traceback" not in ran.err
+
+
+@posix_only
 def test_ctrl_c_stops_it_and_says_so(home: Path) -> None:
     served = Served("--sandbox", "plain", "--sandbox-dir", str(home / "sandboxes"), "--serve")
     try:
@@ -208,7 +226,7 @@ def test_the_served_catalog_listens_on_loopback_only(home: Path, capsys, monkeyp
     # Other tests' sandboxes may be served in this process too; this one is found by its home.
     loop = sandbox_home("loop", home / "sandboxes")
     seen: list[Any] = []
-    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda stop: seen.append(rest._running.get(loop)))
+    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda: seen.append(rest._running.get(loop)))
     assert run(capsys, ["--sandbox", "loop", "--sandbox-dir", str(home / "sandboxes"), "--serve", "--json"]).code == 0
     (running,) = seen
     assert running is not None and running._server.server_address[0] == "127.0.0.1"

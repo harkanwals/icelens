@@ -594,7 +594,52 @@ def test_sql_cannot_read_past_the_catalog(sql: str) -> None:
     """Read-only is not harmless: these write nothing and hand back the machine's files or settings,
     and an agent driving --sql can be talked into one by text a catalog served it."""
     with pytest.raises(IcelensError, match="--sql reads the catalog"):
-        stays_in_catalog(sql)
+        stays_in_catalog(sql, _only_orders)
+
+
+def _only_orders(catalog: str, schema: str, table: str) -> bool:
+    """A catalog whose one table is demo.orders, found the way an attached DuckDB finds it."""
+    return (catalog.lower(), schema, table) == ("icelens", "demo", "orders")
+
+
+@pytest.mark.parametrize("sql", [
+    # No name here looks like a file, and DuckDB reads a file for each: it joins the parts of a
+    # name it cannot find with dots and opens that. So a table is asked for, never pattern-matched.
+    "SELECT * FROM report.csv",
+    'SELECT * FROM "/home/u/export"."csv"',
+    'SELECT * FROM "/home/u/data".parquet',
+    'SELECT * FROM "http://169.254.169.254/latest/meta-data?x="."csv"',
+    "SELECT * FROM icelens.x.csv",
+    "SELECT * FROM icelens.csv",
+    "DESCRIBE report.csv",
+    "SUMMARIZE report.csv",
+    "SHOW report.csv",
+    "TABLE report.csv",
+    "FROM report.csv SELECT 1",
+    "SELECT * FROM icelens.demo.orders o JOIN report.csv r ON true",
+    "SELECT * FROM icelens.demo.orders WHERE EXISTS (FROM q.parquet)",
+    "SELECT (SELECT max(col) FROM report.csv)",
+    "SELECT * FROM icelens.demo.orders ORDER BY (SELECT 1 FROM o.csv) LIMIT (SELECT 1 FROM l.csv)",
+    "EXPLAIN SELECT * FROM report.csv",
+    "SELECT * FROM orders",  # a bare name is a CTE or nothing: DuckDB has no schema to look in
+    "SELECT * FROM icelens.demo.ordrs",
+    "SELECT * FROM pg_catalog.pg_settings",
+    # A CTE hides a file's name only where it is in scope. Each of these reads ./report.csv.
+    'WITH a AS (FROM "report.csv"), "report.csv" AS (SELECT 1) FROM a',
+    'WITH "report.csv" AS (FROM "report.csv") FROM "report.csv"',
+    'SELECT * FROM (WITH "report.csv" AS (SELECT 1) SELECT 1) s, "report.csv"',
+    'WITH RECURSIVE "report.csv" AS (FROM "report.csv" UNION ALL FROM "report.csv" WHERE false) FROM "report.csv"',
+    "WITH report AS (SELECT 1) SELECT * FROM report.csv",
+])
+def test_sql_names_only_tables_the_catalog_has(sql: str) -> None:
+    with pytest.raises(IcelensError, match="--sql reads the catalog"):
+        stays_in_catalog(sql, _only_orders)
+
+
+def test_a_statement_with_no_text_to_check_is_refused() -> None:
+    # DuckDB hands `PIVOT t ON a` back as two statements with no text; nothing to read is not "nothing found".
+    reaches, _ = catalog._outside_catalog("PIVOT report.csv ON a USING sum(b)", _only_orders)
+    assert reaches == {"a query icelens cannot check"}
 
 
 @pytest.mark.parametrize("sql", [
@@ -602,13 +647,24 @@ def test_sql_cannot_read_past_the_catalog(sql: str) -> None:
     'SELECT * FROM icelens."demo"."orders"',
     "SELECT region, count(*) FROM icelens.demo.orders GROUP BY 1",
     'SELECT * FROM icelens."demo"."orders" AT (VERSION => 1)',
-    "SELECT * FROM demo.orders",
     "SELECT * FROM range(3)",
     "SELECT * FROM generate_series(1, 3)",
     "SELECT unnest([1, 2])",
     "WITH c AS (SELECT 1 AS a) SELECT * FROM c",
+    "WITH c AS (SELECT region FROM icelens.demo.orders), d AS (SELECT * FROM c) SELECT * FROM d, (SELECT * FROM c) e",
+    "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 3) SELECT * FROM r",
+    "SELECT * FROM (WITH inner_one AS (SELECT 1) SELECT * FROM inner_one) s",
+    "WITH C AS (SELECT 1) SELECT * FROM c",  # DuckDB matches a CTE whatever its case
+    "DESCRIBE icelens.demo.orders",
+    "SHOW ALL TABLES",
     "EXPLAIN SELECT * FROM icelens.demo.orders",
     "SELECT 'a.b/c' AS looks_like_a_path_but_is_a_value",
 ])
 def test_sql_that_reads_the_catalog_is_let_through(sql: str) -> None:
-    assert stays_in_catalog(sql) == sql
+    assert stays_in_catalog(sql, _only_orders) == sql
+
+
+def test_with_no_catalog_to_ask_no_table_is_known() -> None:
+    assert stays_in_catalog("WITH c AS (SELECT 1) SELECT * FROM c") != ""
+    with pytest.raises(IcelensError, match="not a table in this catalog"):
+        stays_in_catalog("SELECT * FROM icelens.demo.orders")

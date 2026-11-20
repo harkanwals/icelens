@@ -61,7 +61,7 @@ jobs:
       - name: Install DuckDB's extensions
         # The one network fetch the suite depends on, done here in the open, so the tests
         # themselves never reach for extensions.duckdb.org.
-        run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+        run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'avro', 'httpfs', 'aws')]"
       - run: uv run pytest -q
       - name: Packaging
         # Build the sdist and the wheel, install the wheel into a fresh venv, run it.
@@ -103,7 +103,7 @@ jobs:
           enable-cache: true
           python-version: "3.13"
       - run: uv sync --locked --extra dev
-      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'avro', 'httpfs', 'aws')]"
       - run: make live-up
       - run: make test-live
       - name: Server logs
@@ -125,7 +125,7 @@ jobs:
       - run: uv sync --extra dev --resolution lowest-direct
       - name: Versions
         run: uv pip list | grep -Ei '^(duckdb|pyiceberg|textual|pyarrow|pytest) ' | tee -a "$GITHUB_STEP_SUMMARY"
-      - run: uv run --no-sync python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run --no-sync python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'avro', 'httpfs', 'aws')]"
       - run: uv run --no-sync pytest -q
 
   # The browser build: the wheel the site deploys, under the Pyodide the site loads, in Node. Pyodide
@@ -157,7 +157,7 @@ jobs:
           enable-cache: true
           python-version: "3.13"
       - run: uv sync --locked --extra dev
-      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'httpfs', 'aws')]"
+      - run: uv run python -c "import duckdb; [duckdb.execute(f'INSTALL {name}') for name in ('iceberg', 'avro', 'httpfs', 'aws')]"
       - run: uv run pytest -q --cov --cov-report=term-missing:skip-covered --cov-report=xml
       - name: Summarise
         if: always()

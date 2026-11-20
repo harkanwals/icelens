@@ -597,6 +597,10 @@ def test_sql_names_the_tables_it_could_not_read(small_lake: Lake) -> None:
     assert small_lake.query('SELECT count(*) AS n FROM icelens."demo"."one"').to_pylist() == [{"n": 3}]
     with pytest.raises(IcelensError, match=r"1 tables could not be read for SQL: demo\.two \("):
         small_lake.query('SELECT count(*) FROM icelens."demo"."two"')
+    # --sql asks about the table before DuckDB does, and gives the same reason rather than "no such table".
+    with pytest.raises(IcelensError, match=r"demo\.two could not be read for SQL: "):
+        small_lake.sql_finds("icelens", "demo", "two")
+    assert small_lake.sql_finds("icelens", "demo", "one") and not small_lake.sql_finds("icelens", "demo", "three")
 
 
 @pytest.mark.duckdb_extensions

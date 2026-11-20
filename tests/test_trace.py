@@ -61,9 +61,10 @@ def test_every_duckdb_statement_is_timed(lake: Lake, home: Path, capsys) -> None
 @pytest.mark.duckdb_extensions
 def test_a_failed_statement_is_traced_with_its_error(lake: Lake, home: Path, capsys) -> None:
     path = home / "trace.log"
-    assert run(capsys, argv(lake, "--sql", "SELECT * FROM no_such_table", "--trace", str(path))).code == 1
+    # A column, not a table: a table the catalog does not have is refused before DuckDB is asked.
+    assert run(capsys, argv(lake, "--sql", 'SELECT no_such_column FROM icelens."demo"."events"', "--trace", str(path))).code == 1
     failed = [line for line in lines(path) if " failed " in line]
-    assert failed and "no_such_table" in failed[0] and "CatalogException" in failed[0]
+    assert failed and "no_such_column" in failed[0] and "BinderException" in failed[0]
     assert any("stopped: " in line for line in lines(path))
 
 

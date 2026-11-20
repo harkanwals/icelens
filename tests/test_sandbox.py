@@ -710,3 +710,15 @@ def test_a_rest_sandbox_without_a_catalog_names_the_flag_that_needs_one(
     complaint = capsys.readouterr().err
     assert "--rest puts the sandbox inside a catalog you are running" in complaint
     assert "--uri" in complaint and "--catalog" in complaint
+
+
+@pytest.mark.duckdb_extensions
+def test_a_create_whose_rows_will_not_go_in_leaves_no_table(sandbox: Lake) -> None:
+    # The table is made first, so the rows have somewhere to go. A failed write used to leave it
+    # there, empty, and the corrected statement then failed on "already exists".
+    with pytest.raises(IcelensError, match="Could not convert"):
+        sandbox.write("CREATE TABLE demo.bad AS SELECT CAST(v AS INTEGER) AS id FROM (VALUES ('1'), ('x')) t(v)")
+    assert "demo.bad" not in sandbox.tables("demo")
+    [made] = sandbox.write("CREATE TABLE demo.bad AS SELECT CAST(v AS INTEGER) AS id FROM (VALUES ('1'), ('2')) t(v)")
+    assert made.added == 2
+

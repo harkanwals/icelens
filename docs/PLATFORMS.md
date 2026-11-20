@@ -99,6 +99,7 @@ The status bar always says how icelens is reading rows and why it changed course
 | Metadata opens, rows fail with 403 | Your login may see the table but not its files. | Ask for data access on the table (Polaris `TABLE_READ_DATA`, Databricks `EXTERNAL USE SCHEMA`). |
 | `rows via pyiceberg (duckdb could not read it: …)` | DuckDB could not reach the files, or cannot read one of the table's column types (a `timestamptz_ns` column, which Trino writes). PyIceberg read them instead. | Nothing: the rows are right, just slower. |
 | `SQL over pyiceberg scans` | DuckDB's iceberg extension is not installed, so SQL runs over copies of each table. Copies are refused above 5 million rows. | Run `python3 scripts/setup.py` to install it. |
+| `catalog unreachable … ProxyError` from `--v3`, `--serve` or `--rest` on this machine | An HTTP proxy is set (`HTTP_PROXY`), and the catalog icelens runs on 127.0.0.1 is being asked for through it. | Set `NO_PROXY=127.0.0.1,localhost`. |
 | An `abfss://` path in an error | Azure storage is not supported yet. | No workaround yet. |
 | `Not implemented Error: Geography support` in the Data pane | DuckDB cannot read a table with a `geography` column yet. | The other panes work; there is no way to see its rows yet. |
 

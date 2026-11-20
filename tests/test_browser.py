@@ -24,13 +24,17 @@ def text(chunks: list[str]) -> str:
     return " ".join(_CSI.sub(" ", "".join(chunks)).split())
 
 
-async def settle(chunks: list[str], quiet: float = 0.3, limit: float = 15.0) -> None:
-    """Wait until the app has stopped drawing for `quiet` seconds."""
+async def settle(chunks: list[str], want: str = "", start: int = 0, quiet: float = 0.3, limit: float = 30.0) -> None:
+    """Wait until `want` has been drawn since `start` and the app has then been quiet for `quiet` seconds.
+
+    Quiet alone is not "drawn": the catalog is read in worker threads, and on a busy machine the
+    pause before the first paint, or between two, is longer than any `quiet` worth waiting.
+    """
     loop = asyncio.get_running_loop()
     deadline = loop.time() + limit
     seen = -1
     while loop.time() < deadline:
-        if len(chunks) == seen:
+        if len(chunks) == seen and want in "".join(chunks[start:]):
             return
         seen = len(chunks)
         await asyncio.sleep(quiet)
@@ -95,7 +99,7 @@ async def test_the_app_draws_through_write_and_answers_keys(tmp_path: Any) -> No
     session = await browser.start(out.append, 120, 36, on_exit=exits.append, home=tmp_path)
     try:
         assert session.running
-        await settle(out)
+        await settle(out, "demo.orders")
         screen = text(out)
         assert "demo.orders" in screen
         assert "Snapshots" in screen  # the pane tabs
@@ -103,7 +107,7 @@ async def test_the_app_draws_through_write_and_answers_keys(tmp_path: Any) -> No
 
         before = len(out)
         session.feed("4")  # the Snapshots pane
-        await settle(out)
+        await settle(out, "5 snapshots", before)
         assert "5 snapshots" in text(out[before:])
 
         before = len(out)
@@ -126,11 +130,11 @@ async def test_the_app_takes_the_page_theme_and_follows_it(tmp_path: Any, monkey
     out: list[str] = []
     session = await browser.start(out.append, 100, 30, home=tmp_path, dark=False)
     try:
-        await settle(out)
+        await settle(out, "48;2;246;249;251")
         assert session.app.theme == "icelens-light" and "48;2;246;249;251" in "".join(out)
         before = len(out)
         session.set_theme(True)  # the page switched to dark
-        await settle(out)
+        await settle(out, "48;2;11;20;28", before)
         assert session.app.theme == "icelens-dark" and "48;2;11;20;28" in "".join(out[before:])
     finally:
         session.exit()
@@ -194,6 +198,24 @@ async def test_the_first_frame_is_the_demo_and_stays_on_the_alternate_screen(tmp
     assert frame.startswith("\x1b[?1049h")
     assert "\x1b[?1049l" not in frame  # the page goes on showing it, so it must not hand back
     assert "demo.orders" in text([frame])
+
+
+async def test_the_first_frame_waits_for_a_catalog_that_is_slow_to_answer(tmp_path: Any, monkeypatch: Any) -> None:
+    # The capture used to end at the first half second with nothing drawn, which on a busy
+    # machine is the gap before the table loads: the frame stopped at the tree and "no table open".
+    import time
+
+    from icelens.catalog import Lake
+
+    load = Lake.table
+
+    def slow(self: Any, *args: Any, **kwargs: Any) -> Any:
+        time.sleep(0.4)
+        return load(self, *args, **kwargs)
+
+    monkeypatch.setattr(Lake, "table", slow)
+    shown = text([await browser.first_frame(120, 36, tmp_path)])
+    assert "format version 2" in shown and "data files" in shown  # the table's overview, drawn
 
 
 def test_first_frame_command_prints_json(capsys: Any, monkeypatch: Any) -> None:

@@ -24,6 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -422,40 +423,57 @@ ROW_MAKERS: frozenset[str] = frozenset({"range", "generate_series", "unnest"})
 #: Scalar functions that read this process rather than the catalog: its settings, its
 #: variables and which secret would answer for a path.
 _PROCESS_READERS: frozenset[str] = frozenset({"current_setting", "getenv", "getvariable", "which_secret"})
-#: A table name with one of these in it, and no catalog or schema, is DuckDB's cue to read a file
-#: or a URL by that name instead: `FROM '/etc/hosts'`, `FROM "s3://bucket/x.parquet"`.
-_PATH_LIKE = re.compile(r"[/\\:.*?~]")
+
+#: Asked of every table a query names: (catalog, schema, table) -> will DuckDB find one of the
+#: catalog's tables there. `Lake.sql_finds` is the real one.
+Finds = Callable[[str, str, str], bool]
 
 
-def stays_in_catalog(sql: str) -> str:
+def stays_in_catalog(sql: str, finds: Finds | None = None) -> str:
     """The SQL back, having checked it reads only the catalog. Raises if it reaches past it.
 
     Read-only is not the same as harmless: `SELECT content FROM read_text('~/.aws/credentials')`
     writes nothing and hands back the machine's secrets. `--sql` is what an agent drives, and an
     agent can be talked into a query by text a catalog served it - a table comment, a property,
-    a value - so `--sql` reads tables and nothing else. The app's SQL pane is exempt for the
-    reason `only_reads` gives; `--allow-writes` lifts this as it lifts that.
+    a value - so `--sql` refuses what it can see is not a table of the catalog. The app's SQL
+    pane is exempt for the reason `only_reads` gives; `--allow-writes` lifts this as it lifts that.
+
+    A table is checked by asking whether it is one (`finds`), never by whether its name looks
+    like a file. DuckDB reads a file for any name it does not find in a catalog - `FROM
+    report.csv`, `FROM "/tmp/x"."parquet"`, `FROM "http://host/p".csv` - and there is no listing
+    the spellings of that. Without `finds`, no table is known and only a query's own CTEs pass.
+
+    This is a check on the text of a query, not a sandbox around DuckDB: the guide says so, and
+    says what to do about it.
     """
-    reaches = _outside_catalog(sql)
+    reaches, strangers = _outside_catalog(sql, finds)
     if reaches:
+        named = sorted(reaches) + [f"{name} (not a table in this catalog)" for name in strangers]
         raise IcelensError(
-            f"refusing {', '.join(sorted(reaches))}: --sql reads the catalog's tables, not this machine's "
+            f"refusing {', '.join(named)}: --sql reads the catalog's tables, not this machine's "
             "files or DuckDB's settings. To query a local file, use DuckDB itself."
+        )
+    if strangers:
+        raise IcelensError(
+            f"{', '.join(strangers)}: not a table in this catalog, and --sql reads the catalog's tables and "
+            "nothing else, because DuckDB takes any other name for a file or a URL to read. A table is written "
+            f'{ALIAS}."namespace"."table"; `icelens --list` names them. To query a local file, use DuckDB itself.'
         )
     return sql
 
 
-def _outside_catalog(sql: str) -> set[str]:
-    """What in `sql` reads past the catalog; empty when it reads only tables."""
+def _outside_catalog(sql: str, finds: Finds | None = None) -> tuple[set[str], list[str]]:
+    """What in `sql` reads past the catalog: the functions that do, and the names that are no table of it."""
     try:
         import duckdb
 
         statements = duckdb.extract_statements(sql)
     except ImportError:
-        return set()
+        return set(), []
     except Exception:  # noqa: BLE001 - a parse failure is DuckDB's to report, and nothing runs
-        return set()
+        return set(), []
     found: set[str] = set()
+    tables: dict[tuple[str, str, str], None] = {}
     parser = duckdb.connect(":memory:")
     try:
         for statement in statements:
@@ -470,36 +488,63 @@ def _outside_catalog(sql: str) -> set[str]:
             if kind != "SELECT":
                 continue  # only_reads' to refuse; a sandbox's --write is not checked here
             row = parser.execute("SELECT json_serialize_sql(?)", [text]).fetchone()
-            tree = json.loads(row[0]) if row else {"error": True}
-            if tree.get("error"):
-                # A SELECT the serializer cannot read is a SELECT this cannot check.
+            tree: dict[str, Any] = json.loads(row[0]) if row else {"error": True}
+            parsed = tree.get("statements")
+            if tree.get("error") or not isinstance(parsed, list) or len(parsed) != 1:
+                # A SELECT the serializer cannot read is a SELECT this cannot check. So is one
+                # it reads as nothing: `PIVOT t ON a` arrives as a statement with no text.
                 found.add("a query icelens cannot check")
                 continue
-            _collect_reaches(tree, found)
+            _collect_reaches(tree, frozenset(), found, tables)
     finally:
         parser.close()
-    return found
+    strangers = []
+    for catalog, schema, table in tables:
+        if finds is None or not finds(catalog, schema, table):
+            strangers.append(".".join(part for part in (catalog, schema, table) if part))
+    return found, strangers
 
 
-def _collect_reaches(node: Any, found: set[str]) -> None:
+def _collect_reaches(
+    node: Any, ctes: frozenset[str], found: set[str], tables: dict[tuple[str, str, str], None],
+) -> None:
+    """Walk one parsed SELECT: `found` gets the functions that reach out, `tables` every table named.
+
+    `ctes` is the WITH names in scope here, lowercased as DuckDB matches them. Scope is kept
+    exactly, because a name that is not in scope is a file to DuckDB: a CTE sees the ones written
+    before it, itself only in the recursive half of a recursive one, and one written inside a
+    subquery is unknown outside it. `WITH a AS (FROM "x.csv"), "x.csv" AS (SELECT 1) FROM a` reads the file.
+    """
     if isinstance(node, list):
         for item in node:
-            _collect_reaches(item, found)
+            _collect_reaches(item, ctes, found, tables)
         return
     if not isinstance(node, dict):
         return
     kind = node.get("type")
+    entries = (node.get("cte_map") or {}).get("map") if isinstance(node.get("cte_map"), dict) else None
+    for entry in entries or ():
+        _collect_reaches(entry.get("value"), ctes, found, tables)
+        ctes = ctes | {str(entry.get("key", "")).lower()}
     if kind == "TABLE_FUNCTION":
         name = str((node.get("function") or {}).get("function_name", "")).lower()
         if name not in ROW_MAKERS:
             found.add(f"{name}()")
     elif kind == "FUNCTION" and str(node.get("function_name", "")).lower() in _PROCESS_READERS:
         found.add(f"{str(node['function_name']).lower()}()")
-    elif kind == "BASE_TABLE" and not node.get("catalog_name") and not node.get("schema_name"):
-        if _PATH_LIKE.search(str(node.get("table_name", ""))):
-            found.add("a file or URL as a table")
-    for value in node.values():
-        _collect_reaches(value, found)
+    elif kind != "SHOW_REF" and node.get("table_name"):
+        # BASE_TABLE today, and whatever else comes to carry a table's name. SHOW_REF is left
+        # out: its `table_name` is the word after SHOW ("tables", "databases"), not a table.
+        catalog, schema = str(node.get("catalog_name") or ""), str(node.get("schema_name") or "")
+        table = str(node["table_name"])
+        if catalog or schema or table.lower() not in ctes:
+            tables[(catalog, schema, table)] = None
+    # A recursive CTE is in scope in its recursive half only: the half before UNION is planned
+    # without it, so the same name there is a file again.
+    itself = {str(node["cte_name"]).lower()} if kind == "RECURSIVE_CTE_NODE" and node.get("cte_name") else set()
+    for key, value in node.items():
+        if key != "cte_map":
+            _collect_reaches(value, ctes | itself if key == "right" else ctes, found, tables)
 
 
 def _writes_in(sql: str) -> set[str]:
@@ -667,6 +712,26 @@ _ATTACH_KINDS = {
 #: - `CREATE TABLE t AS WITH cte AS (...)` puts its `WITH` after the `AS`, which this misses
 #: on purpose.
 _CREATE_WITH = re.compile(r"^\s*WITH\s*\(", re.I)
+#: A CREATE with neither OR REPLACE nor IF NOT EXISTS: the one `_create_as` takes apart.
+_CREATE_PLAIN = re.compile(r"^\s*CREATE\s+TABLE\s+(?P<table>[\w.\"]+)", re.I)
+
+
+_CREATE_AS = re.compile(r"\s*AS\s+(?P<query>.+?)\s*$", re.I | re.S)
+
+
+def _create_as(sql: str) -> tuple[str, str, str] | None:
+    """`CREATE TABLE t [WITH (…)] AS query` -> (t, " WITH (…)" or "", query). None for any other CREATE."""
+    head = _CREATE_PLAIN.match(sql)
+    if head is None:
+        return None
+    rest, options = sql[head.end():], ""
+    if _CREATE_WITH.match(rest):
+        close = _closing_paren(sql, head.end() + rest.index("("))
+        if close is None:
+            return None
+        options, rest = " " + sql[head.end():close + 1].strip(), sql[close + 1:]
+    body = _CREATE_AS.match(rest)
+    return (head["table"], options, body["query"]) if body else None
 
 
 #: What the ledger calls the writer on the attached side. The offline side names both halves
@@ -2519,6 +2584,46 @@ class Lake:
                     ) from exc
                 raise
 
+    def sql_finds(self, catalog: str, schema: str, table: str) -> bool:
+        """Whether DuckDB will find one of this catalog's tables under a name a query uses.
+
+        `stays_in_catalog` asks it of every table `--sql` names, because a name DuckDB does
+        not find it goes looking for on disk and on the network. So the answer follows what
+        DuckDB will do on the route in play, not what the catalog lists in general:
+
+        - scanning (`bridge`): the views `_register_views` made are all DuckDB has, so they are
+          what is asked. A table that would not register is not found, and says why.
+        - attached: DuckDB asks the catalog for the table by name, so that is what is asked.
+          By name and not by listing the namespace: a login may load a table it cannot list,
+          and a namespace of ten thousand tables is not paged through once per table named.
+        - without the iceberg extension (`arrow`): the same, and `ns.t` counts as well as
+          `icelens.ns.t`, since only that DuckDB has `USE icelens`.
+        """
+        if catalog.lower() not in ("", ALIAS) or not schema or not table:
+            return False
+        ident = f"{schema}.{table}"
+        with self._lock:
+            con = self._duck()
+            if con is not None and not catalog:
+                return False
+            if con is not None and self._mode == "bridge":
+                self._register_views(con)
+                row = con.execute(
+                    "SELECT count(*) FROM duckdb_views() WHERE NOT internal AND database_name = ? "
+                    "AND lower(schema_name) = lower(?) AND lower(view_name) = lower(?)",
+                    [ALIAS, schema, table],
+                ).fetchone()
+                if not (row and row[0]) and ident in self._unreadable:
+                    raise IcelensError(f"{ident} could not be read for SQL: {self._unreadable[ident]}")
+                return bool(row and row[0])
+            try:
+                self.table(ident)
+            except IcelensError as exc:
+                if _no_such(exc.__cause__):
+                    return False
+                raise
+            return True
+
     def _arrow_query(self, sql: str) -> pa.Table:
         """SQL with no iceberg extension: DuckDB over PyIceberg's scans. Called under the lock.
 
@@ -2815,15 +2920,20 @@ class Lake:
             # A v3 sandbox makes namespaces as it goes, as the offline one does. Through
             # PyIceberg, and before DuckDB looks: measured, DuckDB sees it without reattaching.
             self._ensure_namespace(job.table.rsplit(".", 1)[0])
+        asked_for_v3 = False
         if job.kind == "create":
             match = _ATTACH_SHAPES["CREATE"].match(sql)
             if match is not None:
-                sql = with_format_version(sql, match.end("table"))
+                # A CREATE that came with its own WITH (…) is left as written, and is not then
+                # held to v3: asking for v2 on purpose made the table and reported a failure.
+                written, sql = sql, with_format_version(sql, match.end("table"))
+                asked_for_v3 = sql != written
         since = self._mark(job.table)
         con = self._writer()
         before = self._live_rows(con, job.table)
         known = {sid for sid, _ in self._duck_snapshots(con, job.table)}
-        self._run(con, sql)
+        if not (job.kind == "create" and since[1] is None and self._create_then_insert(con, sql)):
+            self._run(con, sql)
         if job.kind == "drop":
             self._tables.pop(job.table, None)
             if since[1] is None:
@@ -2839,7 +2949,7 @@ class Lake:
             if exc.__cause__ is None or not _unreadable_type(exc.__cause__):
                 raise
             return self._report_from_duckdb(con, job, known, (before, after), scrub(_one_line(exc.__cause__)))
-        if job.kind == "create" and since[1] is None and table.metadata.format_version != 3:
+        if job.kind == "create" and asked_for_v3 and since[1] is None and table.metadata.format_version != 3:
             # DuckDB accepted `FORMAT_VERSION 3`, `VERSION 3` and an option that does not
             # exist when writing Iceberg to a directory, and wrote v2 every time without a
             # word. So the version is checked against the table rather than assumed from
@@ -2850,6 +2960,39 @@ class Lake:
                 f"lineage are not available here."
             )
         return self._report(job, table, _ATTACHED_ENGINE, live=(before, after), since=since)
+
+    def _create_then_insert(self, con: Any, sql: str) -> bool:
+        """Run `CREATE TABLE t AS query` as a CREATE with the query's columns and an INSERT. False if it did not.
+
+        Because DuckDB's iceberg extension, given the one statement, makes a directory called
+        `data` in the directory icelens was started from - measured on 1.5.5 and 1.5.6 - and
+        fails outright where it cannot: a read-only directory, or one with a file of that name.
+        The two statements make nothing there, and the table and its first snapshot are the same.
+
+        Only the plain shape is taken apart, and only once DuckDB has made the table from the
+        columns it reports for the query; anything else runs whole, as before. If the rows then
+        fail to go in, the table is dropped again, so a failed CREATE … AS leaves nothing behind.
+        """
+        parts = _create_as(sql)
+        if parts is None:
+            return False
+        table, options, query = parts
+        try:
+            # The newline, because a query may end in a `-- comment` that would swallow the rest.
+            shape = con.execute(f"DESCRIBE SELECT * FROM ({query}\n) AS _icelens_shape").fetchall()
+            columns = ", ".join(f"{quote(row[0])} {row[1]}" for row in shape)
+            con.execute(one_statement(f"CREATE TABLE {table} ({columns}){options}"))
+        except Exception:  # noqa: BLE001 - not a shape this can split; DuckDB runs it whole and says what is wrong
+            return False
+        try:
+            self._run(con, f"INSERT INTO {table} {query}")
+        except IcelensError:
+            try:
+                con.execute(one_statement(f"DROP TABLE IF EXISTS {table}"))
+            except Exception:  # noqa: BLE001 - the INSERT's error is the one worth showing
+                pass
+            raise
+        return True
 
     def _commit(self, job: Write) -> list[Written]:
         """One classified statement, committed, then read back off the snapshots it made."""
@@ -2875,14 +3018,26 @@ class Lake:
                 # and owns a directory to write into - before a byte of data is produced.
                 empty = self._peek(con, job.payload).arrow()
                 self.catalog.create_table(job.table, schema=empty.schema)
-            table = self.table(job.table, refresh=True)
-            if job.kind != "create":
-                since = (table.metadata.current_snapshot_id, table.metadata_location)
-            path = self._duck_parquet(con, job.payload, self._shape(con, table), _local(table.location()) / "data")
-            table.add_files([_file_uri(path)])
-            engine = "duckdb parquet + pyiceberg add_files"
-            if self.table(job.table, refresh=True).current_snapshot() is None:
-                raise IcelensError(f"{job.kind} on {job.table} produced no snapshot")
+            try:
+                table = self.table(job.table, refresh=True)
+                if job.kind != "create":
+                    since = (table.metadata.current_snapshot_id, table.metadata_location)
+                path = self._duck_parquet(con, job.payload, self._shape(con, table), _local(table.location()) / "data")
+                table.add_files([_file_uri(path)])
+                engine = "duckdb parquet + pyiceberg add_files"
+                if self.table(job.table, refresh=True).current_snapshot() is None:
+                    raise IcelensError(f"{job.kind} on {job.table} produced no snapshot")
+            except Exception:
+                if job.kind == "create":
+                    # The table was made above, for the rows to have somewhere to go. Rows that
+                    # would not go in used to leave it there, empty, and the corrected statement
+                    # then failed on "already exists".
+                    try:
+                        self.catalog.drop_table(job.table)
+                    except Exception:  # noqa: BLE001 - the failure being raised is the one to show
+                        pass
+                    self._tables.pop(job.table, None)
+                raise
 
         table = self.table(job.table, refresh=True)
         return self._report(job, table, engine, since=since)
@@ -3141,7 +3296,11 @@ class Lake:
         if generated:
             one_statement(sql)
         try:
-            return con.execute(sql).to_arrow_table()
+            result = con.execute(sql)
+            if result is None:
+                # DuckDB answers None, not an error, to text with no statement in it: a comment, a `;`.
+                raise IcelensError("nothing to run: that is a comment or an empty statement, not a query")
+            return result.to_arrow_table()
         except duckdb.Error as exc:
             if _fatal(exc):
                 raise IcelensError(self._after_fatal(con, exc)) from exc

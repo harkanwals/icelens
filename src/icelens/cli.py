@@ -545,7 +545,7 @@ def _main(argv: list[str] | None) -> int:
                     if lake.is_sandbox:
                         raise IcelensError(f"{exc} In a sandbox, --write commits a statement and says what it did.") from exc
                     raise
-                stays_in_catalog(args.sql)
+                stays_in_catalog(args.sql, lake.sql_finds)
             data = lake.query(args.sql)
             return _print_pane(Pane(data), args, "sql", sql=args.sql)
         if args.pane:
@@ -653,22 +653,33 @@ def _serve(lake: Lake, running: Any, args: argparse.Namespace) -> int:
     machine, so the clients it can serve are the ones running here.
     """
     import signal
-    import threading
 
     name = lake.target.sandbox
     details = connection_details(name, running, 3 if lake.is_served_sandbox else 2)
-    stop = threading.Event()
+
+    def interrupt(*_: Any) -> None:
+        raise KeyboardInterrupt
+
     # Before the address is printed, not after: whoever reads it may send SIGTERM at once, and
     # SIGTERM's default action kills the process without stopping the server. Measured: one
     # start in twelve died that way when the handler was installed after printing.
-    previous = signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    # It raises rather than setting an Event the wait polls: a handler runs on the main thread,
+    # which may be inside that Event's own lock at the moment, and `set()` then waits on it for
+    # ever. Measured: one SIGTERM in 250 left the server running and deaf to the next.
+    previous = signal.signal(signal.SIGTERM, interrupt)
     try:
-        if args.json:
-            _emit("serve", [details], note="serving until interrupted")
-        else:
-            print(_serving_text(details), flush=True)
-        sys.stdout.flush()
-        _wait_for_interrupt(stop)
+        # The printing is inside the `try` with the wait: a script that reads the address and
+        # signals at once can land its ctrl+c before the wait has begun, and that is a stop like
+        # any other - not exit 130 with the server never told to stop.
+        try:
+            if args.json:
+                _emit("serve", [details], note="serving until interrupted")
+            else:
+                print(_serving_text(details), flush=True)
+            sys.stdout.flush()
+            _wait_for_interrupt()
+        except KeyboardInterrupt:
+            pass
     finally:
         signal.signal(signal.SIGTERM, previous)
     running.stop()
@@ -720,16 +731,15 @@ A table is v3 only if its client asks for it (icelens --write does):
   Spark    CREATE TABLE … TBLPROPERTIES ('format-version'='3')"""
 
 
-def _wait_for_interrupt(stop: Any) -> None:
-    """Block until ctrl+c, or until `stop` is set (by SIGTERM, which `kill` and supervisors send).
+def _wait_for_interrupt() -> None:
+    """Block until ctrl+c or SIGTERM; both arrive as KeyboardInterrupt, which the caller takes as "stop".
 
     In slices, because a wait with no timeout ignores ctrl+c on Windows.
     """
-    try:
-        while not stop.wait(0.5):
-            pass
-    except KeyboardInterrupt:
-        pass
+    import time
+
+    while True:
+        time.sleep(0.5)
 
 
 def _interactive() -> bool:

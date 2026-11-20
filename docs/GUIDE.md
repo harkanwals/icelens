@@ -143,11 +143,16 @@ where an unbounded pane means a frozen UI and a bill nobody agreed to. The cap i
 bites (`showing the first 2,000 of 50,000 files`), and the *total* comes from the manifest list's
 own counts, which costs one file read rather than all of them.
 
-Time travel in SQL works the usual DuckDB way:
+Time travel in SQL works the usual DuckDB way, where DuckDB has attached the catalog - REST, Glue,
+S3 Tables, and a `--v3` sandbox (`icelens --demo --v3`):
 
 ```sql
 SELECT count(*) FROM icelens."demo"."orders" AT (VERSION => <snapshot-id>);
 ```
+
+On the other routes a table is a view over its metadata file, and DuckDB has no `AT` for a view:
+it answers "Catalog type does not support time travel". There, and anywhere, a pane reads an older
+snapshot - `,` and `.` in the app, `--pane data demo.orders --snapshot <snapshot-id>` without it.
 
 ## Row lineage, on v3
 
@@ -232,8 +237,8 @@ commits nothing - a `DELETE` that matches no row - gets no row at all.
 
 The split underneath is what makes this work against a catalog DuckDB cannot attach at all:
 **DuckDB parses the statement and runs the query** - its whole vocabulary, `read_csv_auto`,
-window functions, joins against another table - **and PyIceberg turns the Parquet it wrote into
-a snapshot** with `add_files`. `INSERT` maps columns by position and casts them to the table's
+window functions, joins against another table (named in full, `icelens."demo"."sales"`) - **and
+PyIceberg turns the Parquet it wrote into a snapshot** with `add_files`. `INSERT` maps columns by position and casts them to the table's
 types, as SQL has always meant it. A sandbox writes v2 tables unless it is made v3 - with
 `--v3` or `--rest`, below.
 
@@ -338,8 +343,9 @@ the status bar which one it took:
 | `pyiceberg scans` | no DuckDB extension and no network to fetch one - or DuckDB could not reach that table's files | PyIceberg reads the rows itself |
 
 The middle route is the one that matters. `icelens."<namespace>"."<table>"` resolves in the SQL
-pane whichever route is in play, and time travel works in all three, so a Hive or Glue catalog is
-not a second-class citizen with half the tool switched off. A nested namespace is one name to
+pane whichever route is in play, and every pane travels in time in all three, so a Hive or Glue
+catalog is not a second-class citizen with half the tool switched off. (SQL's own
+`AT (VERSION => …)` is the attached route's only.) A nested namespace is one name to
 DuckDB, dots and all: `icelens."core.nested"."deep"`.
 
 When DuckDB is turned away, the tool says so instead of quietly taking another road. A catalog
@@ -454,13 +460,24 @@ without touching the catalog at all. Anything that is not a `SELECT` or an `EXPL
 check applies in a sandbox too, which is attached writable: a sandbox is written with `--write`
 or the Writer pane, and `--sql` stays a reader everywhere.
 
-**And it reads only the catalog.** Writing nothing is not the same as harmless:
-`SELECT content FROM read_text('~/.aws/credentials')` is a read. `--sql` is what scripts and
-agents drive, and an agent can be talked into a query by text a catalog served it, so a table
-function other than `range`, `generate_series` and `unnest`, a file or URL named as a table
-(`FROM '/path'`), and a function that reads DuckDB's own settings are refused too.
-`--allow-writes` lifts this with the rest; the app's SQL pane, typed into by a person, is not
-checked. To query a local file, use DuckDB itself.
+**Use it with caution all the same: `--sql` is DuckDB, and DuckDB reads more than a catalog.**
+It reads local files, URLs and its own settings. `SELECT content FROM read_text('~/.aws/credentials')`
+writes nothing and is not harmless, and `FROM report.csv` reads `./report.csv` whenever no table
+has that name. `--sql` is what scripts and agents drive, and an agent can be talked into a query
+by text a catalog served it - a table comment, a property, a value.
+
+So the query is checked before it runs. Every table it names has to be one the catalog has,
+written `icelens."namespace"."table"`, or a CTE of the query's own; the only table functions are
+`range`, `generate_series` and `unnest`; and a function that reads DuckDB's settings is refused.
+A mistyped table is refused here too, with "not a table in this catalog".
+
+That check is a seat belt, not a sandbox. It reads the text of a query and does not wall DuckDB
+off from the machine, so a spelling nobody has thought of yet would get through it. Run SQL you
+wrote or have read, never SQL lifted out of a catalog, and give an agent that drives `--sql` no
+more of the file system and network than you would give DuckDB itself. `--allow-writes` lifts
+the check with the rest; the app's SQL pane, typed into by a person, is not checked at all. Nor
+is a sandbox's `--write`: `CREATE TABLE demo.t AS SELECT * FROM 'orders.csv'` is how a file gets
+into a sandbox, so a write can read one. To query a local file on purpose, use DuckDB.
 
 ```bash
 $ icelens --sql "SELECT 1; DROP TABLE demo.orders" --json
@@ -562,7 +579,7 @@ extensions, are not in it; `CALL enable_logging('HTTP')` in the SQL pane shows t
 ## Limitations
 
 - Read only against a real catalog: the connection is opened read-only and DuckDB enforces it.
-  `--allow-writes` is the one way past that, and a sandbox (`--sandbox`, below) is the one place
+  `--allow-writes` is the one way past that, and a sandbox (`--sandbox`, above) is the one place
   writing is on by default - it is a local catalog this tool made, holding nothing you can lose.
 - The Data pane's `WHERE` is passed to the engine as written; a broken filter is an error in the
   pane. With DuckDB that is SQL. Without it - no extension, nothing it could read - the rows come
@@ -576,7 +593,7 @@ extensions, are not in it; `CALL enable_logging('HTTP')` in the SQL pane shows t
   tables PyIceberg scanned: whole tables (up to 5 million rows each), refreshed when their snapshot
   moves, reads only, and no `AT (VERSION => …)` time travel. The status bar says "SQL over pyiceberg scans".
 - The in-browser demo ([try it](https://harkanwals.github.io/icelens/try.html)) runs the demo
-  catalog only, below the dependency floors above; what it needs and what was verified is in
+  catalog only, on versions below the floors `pyproject.toml` sets; what it needs and what was verified is in
   [PLATFORMS.md](PLATFORMS.md#in-the-browser).
 - Some paths pass their unit tests and have never met the thing they are about - BigLake most of
   all. They are listed, with how to test each, in [UNVERIFIED.md](UNVERIFIED.md).

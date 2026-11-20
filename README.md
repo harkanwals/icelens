@@ -99,7 +99,11 @@ icelens --pane files demo.orders --json
 icelens --sql 'SELECT count(*) FROM icelens."demo"."orders"'
 ```
 
-`--sql` refuses anything that writes. Exit codes are `0` fine, `1` refused by the catalog or the
+These read the catalog you have configured; add `--demo` to try them without one.
+`--sql` refuses anything that writes, and any table that is not the catalog's. It is still
+DuckDB, which can read local files and URLs, so run only SQL you have read: the
+[guide](https://harkanwals.github.io/icelens/docs/#--sql-reads-and-says-so) says what is checked
+and what is not. Exit codes are `0` fine, `1` refused by the catalog or the
 query, and `2` bad usage. The `--json` format is documented in the
 [guide](https://harkanwals.github.io/icelens/docs/#--json-for-readers-that-are-not-people).
 

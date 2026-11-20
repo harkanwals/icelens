@@ -237,6 +237,13 @@ Things that cost time and are worth not rediscovering:
   be writable by the container's uid 10000. DuckDB writing to a local `file://` table location
   creates `data/` but not `metadata/`, so its first commit fails unless the directory exists. That
   only matters for local-file fixtures; object stores have no directories.
+- **`CREATE TABLE … AS` through an attached catalog makes a `data` directory in the current
+  directory.** DuckDB 1.5.5 and 1.5.6, against icelens's own REST catalog: the directory is left
+  empty, and the statement fails where it cannot be made (a read-only directory, a file of that
+  name). A `CREATE TABLE (columns)` and an `INSERT` do neither. So a sandbox DuckDB writes runs a
+  plain `CREATE TABLE t AS query` as those two statements, with the columns DuckDB reports for the
+  query; `CREATE OR REPLACE` and `IF NOT EXISTS` still go to DuckDB whole. Verified by running the
+  v3 demo and a v3 `--write` from a read-only directory.
 - Polaris accepted `CREATE TABLE … WITH ("format-version" = 3)` from DuckDB and stored a real v3
   table. This was the open question in `UNVERIFIED.md` #3, now answered for Polaris: v3 works.
 

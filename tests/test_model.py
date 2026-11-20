@@ -225,3 +225,20 @@ def test_row_lineage_degrades_out_loud_when_the_route_cannot_compute_it(
     assert pane.data.num_rows == 10
     assert "_row_id" not in pane.data.column_names
     assert "pyiceberg (no row lineage here)" in pane.note
+
+
+def test_snapshots_committed_in_one_millisecond_are_listed_in_commit_order() -> None:
+    # DuckDB's MERGE commits an overwrite and then an append, often inside one millisecond. The
+    # snapshot id is random, so ordering a tie by it listed the two in either order: about one
+    # v3 demo in thirty showed the append first. Stand-ins, because a real tie cannot be asked for.
+    from types import SimpleNamespace as S
+
+    first = S(timestamp_ms=1000, sequence_number=6, snapshot_id=9_000, operation="overwrite")
+    second = S(timestamp_ms=1000, sequence_number=7, snapshot_id=1_000, operation="append")
+    earlier = S(timestamp_ms=999, sequence_number=5, snapshot_id=5_000, operation="append")
+    for snapshots in ([first, second, earlier], [second, earlier, first]):
+        ordered = model.ordered_snapshots(S(snapshots=snapshots))
+        assert [s.sequence_number for s in ordered] == [5, 6, 7]
+    # A v1 table has no sequence numbers; the id still settles a tie the same way every time.
+    old = [S(timestamp_ms=1, sequence_number=None, snapshot_id=n) for n in (3, 1, 2)]
+    assert [s.snapshot_id for s in model.ordered_snapshots(S(snapshots=old))] == [1, 2, 3]

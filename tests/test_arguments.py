@@ -546,7 +546,7 @@ def test_a_serve_token_anyone_could_guess_is_refused(home: Path, capsys, monkeyp
     """The token is all that stands between the sandbox and every other process on the machine."""
     from icelens import cli
 
-    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda stop: None)
+    monkeypatch.setattr(cli, "_wait_for_interrupt", lambda: None)
     monkeypatch.setenv("ICELENS_SERVE_TOKEN", "hunter2")
     refused(run(capsys, ["--sandbox", "s", "--sandbox-dir", str(home / "sandboxes"), "--serve"]), "ICELENS_SERVE_TOKEN is 7 characters", "16")
     monkeypatch.setenv("ICELENS_SERVE_TOKEN", "a-token-of-sixteen")

@@ -686,8 +686,12 @@ def ordered_snapshots(meta: Any) -> list[Any]:
 
     The stepping keys walk this same list, so what `,` and `.` move through is exactly what
     the pane shows, off-chain snapshots included. Two orderings would eventually disagree.
+
+    By commit time, then by sequence number: a writer that commits twice in one millisecond -
+    DuckDB's MERGE does, an overwrite and then an append - leaves two snapshots with one
+    timestamp, and the snapshot id, which is random, would list them in either order.
     """
-    return sorted(meta.snapshots, key=lambda s: (s.timestamp_ms, s.snapshot_id))
+    return sorted(meta.snapshots, key=lambda s: (s.timestamp_ms, s.sequence_number or 0, s.snapshot_id))
 
 
 def _ancestors(meta: Any) -> set[int]:
