@@ -7,6 +7,11 @@
 // kept and sent the moment the live app takes over. The app follows the page's light or dark
 // mode. Where the page's <head> chose not to start loading (a phone, a slow or metered link),
 // the card offers a button instead.
+//
+// Python in a tab holds about 1 GB for as long as its worker lives, and WebAssembly memory never
+// shrinks. Ending the worker is the only way to give it back, so the demo is stopped when its
+// tab has been in the background for a minute, or when nobody has touched it for ten. The home
+// page does not start it at all until asked: most visitors there came to read.
 (() => {
   const $ = (id) => document.getElementById(id);
   const launch = $("launch"), boot = $("boot"), bar = $("bar"), label = $("label"), steps = $("steps");
@@ -28,6 +33,8 @@
   // Whether a person pressed a key in the terminal before it went live. Not `queued.length`:
   // xterm.js queues its own answers to the app's terminal queries there too.
   let pressed = false;
+  const HIDDEN_LIMIT = 60000, IDLE_LIMIT = 600000;
+  let hiddenTimer = 0, lastInput = performance.now();
 
   // The cells' own colours come from the app's Textual theme (icelens/browser.py); these are
   // for the terminal around them: its background, the cursor, a selection, and plain ANSI.
@@ -112,7 +119,11 @@
       leave();
       return false;
     });
-    term.onData((data) => (live ? send({ type: "input", data }) : queued.push(data)));
+    term.onData((data) => {
+      lastInput = performance.now();
+      if (live) send({ type: "input", data });
+      else queued.push(data);
+    });
     term.onResize(({ cols, rows }) => live && send({ type: "resize", cols, rows }));
     new ResizeObserver(() => (live ? fit.fit() : scalePreview())).observe(host);
   }
@@ -217,6 +228,38 @@
     say("icelens could not start: " + message);
   }
 
+  // End the worker, and with it everything Python held; the preview and a button take its place.
+  function park(text) {
+    clearTimeout(hiddenTimer);
+    if (!worker) return;
+    worker.terminate();
+    worker = null;
+    sqlReady = false;
+    pressed = false;
+    queued.length = 0;
+    if (live) {
+      live = false;
+      host.classList.add("preview");
+      drawPreview();
+    }
+    progress(0, 4, "");
+    wait("Start the demo again", text);
+    say("");
+  }
+  document.addEventListener("visibilitychange", () => {
+    clearTimeout(hiddenTimer);
+    if (document.hidden && worker) {
+      hiddenTimer = setTimeout(() => {
+        if (document.hidden) park("Stopped while its tab was in the background, to free memory");
+      }, HIDDEN_LIMIT);
+    }
+  });
+  setInterval(() => {
+    if (live && worker && performance.now() - lastInput > IDLE_LIMIT) park("Stopped after ten minutes unused, to free memory");
+  }, 30000);
+  // A page kept for the back button would keep its worker, and the memory, with it.
+  addEventListener("pagehide", () => park("Stopped when you left the page, to free memory"));
+
   function onMessage(event) {
     const msg = event.data;
     if (msg.type === "progress") {
@@ -227,6 +270,7 @@
     } else if (msg.type === "ready") {
       progress(4, 4, "Ready");
       clearTimeout(watchdog);
+      lastInput = performance.now();
       boot.classList.add("gone");
       sqlNote.hidden = sqlReady;
       // The theme may have changed while the app was starting.
@@ -264,8 +308,8 @@
   }
   makeTerminal();
   showPreview();
-  // Started as the page opens rather than on a click: loading is most of the wait, and the
-  // visitor came to see the thing run. Unless the page's <head> said not to.
-  if (window.icelens && window.icelens.auto === false) wait("Start the demo", "The demo downloads about 29 MB, and 8.5 MB more for SQL");
+  // On try.html, started as the page opens rather than on a click: loading is most of the wait,
+  // and the visitor came to see the thing run. Unless the page's <head> said not to.
+  if (window.icelens && window.icelens.auto === false) wait("Start the demo", "Runs Python in this tab: a 29 MB download and about 1 GB of memory");
   else start();
 })();

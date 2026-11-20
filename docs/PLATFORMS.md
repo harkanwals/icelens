@@ -120,9 +120,11 @@ The [demo](https://harkanwals.github.io/icelens/try.html) is the real icelens, r
 
 - **The demo catalog only.** The browser cannot reach your catalogs, and nothing you do is sent
   anywhere.
-- **The first visit downloads about 29 MB**, plus 8.5 MB when the SQL pane is first needed. Later
-  visits use the browser's cache. Phones and connections in data-saver mode get a button, so
+- **The first visit downloads about 29 MB**, plus 8.5 MB for the SQL pane. Later visits use the
+  browser's cache. The home page, phones and connections in data-saver mode get a button, so
   nothing is downloaded unless you ask.
+- **It uses about 1 GB of memory while it runs.** It stops itself, and frees that memory, after
+  a minute in a background tab or ten minutes unused. A button starts it again.
 - **It is ready in about 4 to 5 seconds** on a fast connection, and in under 4 on a return visit. Until
   then, the app's first screen is shown dimmed, and keys you type are kept.
 - **Tested in Chrome.** Firefox, Safari and phones have not been tried.

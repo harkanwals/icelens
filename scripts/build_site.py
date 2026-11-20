@@ -414,9 +414,10 @@ def footer(prefix: str) -> str:
 # --- The live demo, on the home page and full screen on try.html ---------------------------------
 
 # In <head>, before anything else is fetched: the worker starts loading Python the moment it
-# exists. Not on a phone or a connection that says it is slow or metered, where 29 MB nobody
-# asked for is a cost: those get the preview and a button. demo.js replays whatever the worker
-# said before it was listening.
+# exists. Only on try.html, the page somebody opens to run the demo: Python in a tab is a 29 MB
+# download and about 1 GB of memory, and the home page is mostly read. Nor on a phone or a
+# connection that says it is slow or metered. Those get the preview and a button. demo.js
+# replays whatever the worker said before it was listening.
 DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" integrity="sha384-8Xk9wy/gzEDUKrXtrmCFa2bBuK3BpjpDuL/p0SeKQX19Khl/M+lHOgD/CyYf7efP" crossorigin="anonymous">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://files.pythonhosted.org" crossorigin>
@@ -425,7 +426,8 @@ DEMO_HEAD = """<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/
   (() => {
     const link = navigator.connection || {};
     const slow = link.saveData || /(^|-)2g$|^3g$/.test(link.effectiveType || "");
-    const auto = !slow && matchMedia("(min-width: 760px)").matches;
+    const asked = /(^|\\/)try(\\.html)?$/.test(location.pathname);
+    const auto = asked && !slow && matchMedia("(min-width: 760px)").matches;
     window.icelens = { early: [], auto, worker: null };
     if (!auto) return;
     try {
