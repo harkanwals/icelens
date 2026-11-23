@@ -15,9 +15,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const done = (code) => { chrome.kill(); process.exit(code); };
 setTimeout(() => { console.error("timed out"); done(1); }, 120000);
 
-// Port 0: Chrome picks one and writes it here, so tests never collide over a port.
+// Port 0: Chrome picks one and writes it here, so tests never collide over a port. A loaded CI
+// runner has taken over ten seconds to start Chrome.
 const portFile = join(dir, "DevToolsActivePort");
-for (let i = 0; i < 100 && !existsSync(portFile); i++) await sleep(100);
+for (let i = 0; i < 600 && !existsSync(portFile); i++) await sleep(100);
+if (!existsSync(portFile)) { console.error("Chrome did not start within 60s"); done(1); }
 const [port, path] = readFileSync(portFile, "utf8").split("\n");
 const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
 await new Promise((r) => (ws.onopen = r));

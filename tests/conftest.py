@@ -58,6 +58,18 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     check(item)
 
 
+# pytest-timeout charges a session fixture's setup to whichever test needs it first. Drawing the
+# walk-through takes three minutes here and over five on CI's runners, so every test that shared
+# it errored at the 300s limit, though nothing hung.
+WALK_TIMEOUT = 900
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        if "walk_graph" in getattr(item, "fixturenames", ()) and not item.get_closest_marker("timeout"):
+            item.add_marker(pytest.mark.timeout(WALK_TIMEOUT))
+
+
 @pytest.fixture(autouse=True)
 def _secrets_of_its_own() -> None:
     """What `remember_secrets` learns in a test is forgotten when the test ends.
