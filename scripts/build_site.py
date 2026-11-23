@@ -44,7 +44,7 @@ DESCRIPTIONS = {
 
 #: Where the site is served when nothing says otherwise. A shared link's preview needs absolute
 #: URLs, so the deploy that serves the site somewhere else sets ICELENS_SITE_URL to that address.
-DEFAULT_SITE = "https://harkanwals.github.io/icelens"
+DEFAULT_SITE = "https://icelens.harkanwal.nz"
 
 #: The picture a shared link shows: 1200 by 630, the size every network's large card expects.
 CARD = "og.png"

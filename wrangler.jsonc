@@ -3,5 +3,7 @@
 {
   "name": "icelens",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./_site" }
+  "assets": { "directory": "./_site" },
+  // Cloudflare makes the DNS record and the certificate for it when the Worker deploys.
+  "routes": [{ "pattern": "icelens.harkanwal.nz", "custom_domain": true }]
 }

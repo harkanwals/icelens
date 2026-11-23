@@ -45,7 +45,7 @@ icelens opens any Iceberg catalog PyIceberg can reach. Tell it which, in any one
         warehouse: WAREHOUSE
 
 Glue, Hive, SQL, Polaris, Snowflake and Databricks recipes are in the guide:
-https://harkanwals.github.io/icelens/docs/
+https://icelens.harkanwal.nz/docs/
 To look around first, with nothing to set up: icelens --demo
 """
 

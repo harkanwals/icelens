@@ -65,7 +65,7 @@ dev = [
 icelens = "icelens.cli:main"
 
 [project.urls]
-Homepage = "https://harkanwals.github.io/icelens/"
+Homepage = "https://icelens.harkanwal.nz/"
 Source = "https://github.com/harkanwals/icelens"
 Issues = "https://github.com/harkanwals/icelens/issues"
 

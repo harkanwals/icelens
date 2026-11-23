@@ -221,4 +221,4 @@ def test_every_page_is_a_link_preview_at_the_address_it_is_served_from(tmp_path,
             content = re.search(rf'<meta (?:property|name)="{tag}" content="([^"]+)">', head)
             assert content and content.group(1).strip(), (path, tag)
         assert re.search(r'<meta name="description" content="[^"]{40,}">', head), path
-        assert "harkanwals.github.io" not in head
+        assert "icelens.harkanwal.nz" not in head

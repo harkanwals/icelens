@@ -56,7 +56,7 @@ variables or a `.env` only you can read. icelens never prints a credential.
 
 A REST catalog with several warehouses (Lakekeeper, Polaris) gets a picker, and `ctrl+w` switches
 warehouse. Recipes for Polaris, Snowflake, Databricks and BigLake are in the
-[guide](https://harkanwals.github.io/icelens/docs/#oauth-catalogs-polaris-snowflake-databricks).
+[guide](https://icelens.harkanwal.nz/docs/#oauth-catalogs-polaris-snowflake-databricks).
 
 ## What you see
 
@@ -88,7 +88,7 @@ icelens --demo --v3 --serve    # serve it over Iceberg REST for Spark, DuckDB or
 ```
 
 Write `CREATE`, `INSERT` and `DELETE` statements and see what each commit did to the table. See
-the [guide](https://harkanwals.github.io/icelens/docs/#the-sandbox).
+the [guide](https://icelens.harkanwal.nz/docs/#the-sandbox).
 
 ## In scripts
 
@@ -104,9 +104,9 @@ icelens --sql 'SELECT count(*) FROM icelens."demo"."orders"'
 - These read the catalog you have configured. Add `--demo` to try them without one.
 - `--sql` refuses anything that writes, and any table that is not the catalog's. It is still
   DuckDB, which can read local files and URLs, so run only SQL you have read. The
-  [guide](https://harkanwals.github.io/icelens/docs/#--sql) says what is checked.
+  [guide](https://icelens.harkanwal.nz/docs/#--sql) says what is checked.
 - Exit codes: `0` fine, `1` refused by the catalog or the query, `2` bad usage.
-- The `--json` format is in the [guide](https://harkanwals.github.io/icelens/docs/#--json).
+- The `--json` format is in the [guide](https://icelens.harkanwal.nz/docs/#--json).
 
 ## With a coding agent
 
@@ -124,13 +124,13 @@ mkdir -p ~/.claude/skills/icelens && icelens --skill > ~/.claude/skills/icelens/
 Tested against Iceberg REST (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs.
 Snowflake, Databricks Unity, Nessie, Glue, S3 Tables and Hive are supported in code but have not
 been run against a real account. Linux and macOS only for now: local catalogs do not work on
-Windows yet. [Platforms](https://harkanwals.github.io/icelens/docs/platforms.html) says what each needs and what has
-been verified, and [Limitations](https://harkanwals.github.io/icelens/docs/#limitations) lists what does not work yet.
+Windows yet. [Platforms](https://icelens.harkanwal.nz/docs/platforms.html) says what each needs and what has
+been verified, and [Limitations](https://icelens.harkanwal.nz/docs/#limitations) lists what does not work yet.
 
 ## More
 
-- [The guide](https://harkanwals.github.io/icelens/docs/): every pane, key and flag.
-- [Platforms](https://harkanwals.github.io/icelens/docs/platforms.html): connecting to each catalog, and what to do when it fails.
+- [The guide](https://icelens.harkanwal.nz/docs/): every pane, key and flag.
+- [Platforms](https://icelens.harkanwal.nz/docs/platforms.html): connecting to each catalog, and what to do when it fails.
 - [Contributing](https://github.com/harkanwals/icelens/blob/main/CONTRIBUTING.md): how icelens is built and tested.
 
 Apache-2.0.
