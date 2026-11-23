@@ -63,3 +63,45 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+  # Once the site is on Cloudflare, the GitHub Pages address it had (harkanwals.github.io/icelens/)
+  # serves one page that sends the visitor to the same path at SITE_URL, so links to the old
+  # address keep working. GitHub Pages shows 404.html for any path it has no file for, which is
+  # every old page. Separate from the build, so a failed Cloudflare deploy does not hold it up.
+  redirect:
+    if: vars.CLOUDFLARE_PROJECT != ''
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      SITE_URL: ${{ vars.SITE_URL }}
+    steps:
+      - name: Write the redirect page
+        run: |
+          site="${SITE_URL%/}"
+          case "$site" in https://*) ;; *) echo "SITE_URL must be an https:// address, not '$site'"; exit 1;; esac
+          mkdir -p redirect
+          cat > redirect/index.html <<HTML
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>icelens has moved</title>
+          <meta name="robots" content="noindex">
+          <link rel="canonical" href="$site/">
+          <meta http-equiv="refresh" content="0; url=$site/">
+          <script>location.replace("$site" + location.pathname.replace(/^\/[^/]+/, "") + location.search + location.hash);</script>
+          </head>
+          <body><p>icelens has moved to <a href="$site/">$site</a>.</p></body>
+          </html>
+          HTML
+          cp redirect/index.html redirect/404.html
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: redirect
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
