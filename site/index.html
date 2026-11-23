@@ -23,10 +23,40 @@
       <li><b>Inspect your production tables.</b> Point it at your catalog and see why a table has the
       files it has, what a commit changed, and what the rows were before it. It only reads.</li>
     </ul>
+    <div class="try">
+      <p>Try it on the demo table: one command, nothing to configure.</p>
+<pre><code>uvx icelens --demo</code></pre>
+    </div>
     <!--#walk-->
     <div class="actions after-demo">
-      <a class="button" href="#install">Install</a>
-      <a class="button ghost" href="docs/index.html">Read the guide</a>
+      <a class="button" href="docs/index.html">Read the guide</a>
+    </div>
+  </section>
+
+  <section class="section alt" id="install">
+    <div class="inner">
+      <span class="eyebrow">Install</span>
+      <h2>One command.</h2>
+      <p class="intro">It reads any Iceberg catalog PyIceberg can reach. Tested with Iceberg REST
+      (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs; see
+      <a href="docs/platforms.html">Platforms</a> for the rest.</p>
+      <div class="steps">
+        <div class="card">
+          <h3>Install</h3>
+          <p>With uv, or pipx.</p>
+<pre><code>uv tool install icelens
+pipx install icelens
+icelens --version</code></pre>
+        </div>
+        <div class="card">
+          <h3>Open a catalog, or start with none</h3>
+          <p>It finds the catalog this directory is configured for.</p>
+<pre><code>icelens                      # this directory's catalog
+icelens demo.orders          # straight onto a table
+icelens --uri http://localhost:8181/catalog --warehouse demo
+icelens --demo               # a local catalog worth opening</code></pre>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -156,45 +186,6 @@ data     3709505998256409031       1      30     2    0     4.5 KB  16b26532-…
         <li><b><kbd>9</kbd>Layout</b>The pointer chain, indented: metadata → snapshot → manifest list → manifests → files.</li>
         <li><b><kbd>0</kbd>SQL</b>Any DuckDB SQL over the attached catalog, time travel included.</li>
       </ul>
-    </div>
-  </section>
-
-  <section class="section alt" id="install">
-    <div class="inner">
-      <span class="eyebrow">Install</span>
-      <h2>One command.</h2>
-      <p class="intro">It reads any Iceberg catalog PyIceberg can reach. Tested with Iceberg REST
-      (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs; see
-      <a href="docs/platforms.html">Platforms</a> for the rest.</p>
-      <div class="steps">
-        <div class="card">
-          <h3>Install</h3>
-          <p>With uv, or pipx.</p>
-<pre><code>uv tool install icelens
-pipx install icelens
-icelens --version</code></pre>
-        </div>
-        <div class="card">
-          <h3>Open a catalog, or start with none</h3>
-          <p>It finds the catalog this directory is configured for.</p>
-<pre><code>icelens                      # this directory's catalog
-icelens demo.orders          # straight onto a table
-icelens --uri http://localhost:8181/catalog --warehouse demo
-icelens --demo               # a local catalog worth opening</code></pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section final">
-    <div class="inner narrow">
-      <h2>Try it on the demo table.</h2>
-      <p>One command, nothing to configure: a local catalog with one table and five commits.</p>
-<pre><code>uvx icelens --demo</code></pre>
-      <div class="actions">
-        <a class="button" href="#install">Install</a>
-        <a class="button ghost" href="docs/index.html">Read the guide</a>
-      </div>
     </div>
   </section>
 </main>
