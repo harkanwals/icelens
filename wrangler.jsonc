@@ -1,0 +1,7 @@
+// The website, served by Cloudflare Workers as static assets: `_site/`, which
+// scripts/build_site.py writes, and no Worker code. .github/workflows/pages.yml deploys it.
+{
+  "name": "icelens",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./_site" }
+}
