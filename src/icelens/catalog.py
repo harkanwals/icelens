@@ -1403,9 +1403,14 @@ def refused_to_vend(exc: BaseException) -> bool:
 
     Polaris over an S3 store with no STS (`stsUnavailable`) answers every table load this way
     when asked - and PyIceberg always asks - so without recognising it no table opens at all.
+    Gravitino's Iceberg REST server with no `credential-providers` refuses the same way, in its
+    own words (a 400, `IllegalArgumentException`), as found on 1.3.1.
     """
     text = str(exc).lower()
-    return "credential vending was requested" in text or "no credentials are available" in text
+    return any(
+        phrase in text
+        for phrase in ("credential vending was requested", "no credentials are available", "no credential provider found")
+    )
 
 
 def _rest_defaults(target: Target) -> Target:

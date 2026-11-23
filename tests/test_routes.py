@@ -239,6 +239,15 @@ def test_a_refusal_to_vend_is_recognised_in_both_clients_words() -> None:
     assert not refused_to_vend(RuntimeError("403 Forbidden"))
 
 
+def test_gravitinos_refusal_to_vend_is_recognised() -> None:
+    """Gravitino 1.3.1 with no `credential-providers`, verbatim; unrecognised, no table opened."""
+    assert refused_to_vend(
+        RuntimeError(
+            "IllegalArgumentException: No credential provider found for path s3://gravitino/probe/events with scheme s3"
+        )
+    )
+
+
 class _Refuses:
     """A catalog that refuses vending once per connection, as Polaris without STS does."""
 

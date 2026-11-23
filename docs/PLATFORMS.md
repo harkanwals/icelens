@@ -14,7 +14,8 @@ to connect to each, and what to do when something goes wrong.
 | Snowflake (Open Catalog or Horizon) | **Should work.** Not yet run against a real account. |
 | Databricks Unity Catalog | **Should work** on AWS and Google Cloud. Not yet run against a real workspace. |
 | AWS Glue, S3 Tables, Hive, DynamoDB | **Should work** with PyIceberg's extra for each (see [Install](../README.md#install)). Untested. |
-| Nessie | Untested. |
+| Nessie | **Partly.** Run in Docker: add `-p header.X-Iceberg-Access-Delegation=` and your store keys, and rows and SQL work; the Files and Manifests panes fail. |
+| Apache Gravitino | **Works** in Docker, with a `~/.pyiceberg.yaml` profile that sets `auth: {type: noop}` when the server has no login. |
 | Anything on Azure storage (`abfss://`) | **Not yet.** The metadata panes fail as well as the rows. |
 | Local catalogs on Windows | **Not yet.** PyIceberg cannot open a `file:///C:/…` path. |
 
@@ -98,6 +99,7 @@ Start with the status bar: it says how rows are being read, and why.
 | `SQL over pyiceberg scans` | DuckDB's iceberg extension is not installed, so SQL runs over copies of each table. Copies are refused above 5 million rows. | Run `python3 scripts/setup.py` to install it. |
 | `catalog unreachable … ProxyError` from `--v3`, `--serve` or `--rest` on this machine | An HTTP proxy is set (`HTTP_PROXY`), and the catalog icelens runs on 127.0.0.1 is being asked for through it. | Set `NO_PROXY=127.0.0.1,localhost`. |
 | An `abfss://` path in an error | Azure storage is not supported yet. | No workaround yet. |
+| Rows fail with 403 on Nessie, though you gave store keys | Nessie hands out no credentials and DuckDB stops using yours. | Add `-p header.X-Iceberg-Access-Delegation=` (empty). |
 | `Not implemented Error: Geography support` in the Data pane | DuckDB cannot read a table with a `geography` column yet. | The other panes work; there is no way to see its rows yet. |
 
 ## DuckDB
