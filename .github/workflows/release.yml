@@ -1,0 +1,35 @@
+name: release
+
+# Publishes to PyPI when a tag like v0.1.1 is pushed, through PyPI's trusted publishing: PyPI
+# trusts this workflow, in the `pypi` environment, to upload icelens, so no token is stored
+# anywhere. PyPI's side is set up once, under the project's Publishing settings.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: pypi
+      url: https://pypi.org/project/icelens/
+    permissions:
+      id-token: write  # what PyPI checks instead of a password
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          python-version: "3.13"
+      # A version on PyPI can never be uploaded twice, so a tag that names another version
+      # than the package's stops here, before anything is built.
+      - name: The tag names the package's version
+        run: |
+          version=$(uv version --short)
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "tag ${GITHUB_REF_NAME} is not v${version}"; exit 1; }
+      # No tests here: tag a commit whose `ci` run on main is green, which tested this code.
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
