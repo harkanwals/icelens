@@ -346,6 +346,10 @@ kbd {
 }
 .hero .uses li { margin: 0; padding: 0.9rem 1.1rem; border: 1px solid var(--border); border-radius: 12px; }
 .hero .uses b { display: block; color: var(--text); margin-bottom: 0.2rem; }
+/* The one command to run, above the walk-through it lets you run for real. */
+.hero .try { margin: 0 auto 2rem; }
+.hero .try p { color: var(--muted); margin: 0 0 0.6rem; }
+.hero .try pre { display: inline-block; margin: 0; text-align: left; }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-bottom: 1rem; }
 .hero .fine { font-size: 0.88rem; color: var(--muted); margin-bottom: 3.5rem; }
 
@@ -486,9 +490,6 @@ figcaption { font-size: 0.88rem; color: var(--muted); }
 .steps .card pre { margin: 0.75rem 0 0; }
 .steps .card h3 { margin-bottom: 0.25rem; }
 
-.final { text-align: center; }
-.final h2 { margin-bottom: 0.75rem; }
-.final p { color: var(--muted); max-width: 34rem; margin: 0 auto 1.75rem; }
 
 /* --- Footer */
 
