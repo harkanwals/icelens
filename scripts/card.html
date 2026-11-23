@@ -1,0 +1,30 @@
+<!-- The social card, site/og.png, which LinkedIn shows about 320px wide: everything on it is
+     large enough to read at that size. Redraw it with Chrome on macOS (the SF fonts):
+     "Google Chrome" --headless=new --hide-scrollbars --window-size=1200,630 --screenshot=site/og.png scripts/card.html -->
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1200px;height:630px;overflow:hidden}
+body{background:radial-gradient(ellipse at 85% 15%,#16334a 0,#0b141c 60%);color:#e4ecf2;font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;position:relative}
+.mark{position:absolute;left:76px;top:70px;display:flex;align-items:center;gap:20px;font:600 52px "SF Mono",Menlo,monospace;color:#e4ecf2}
+.mark svg{width:58px;height:58px}
+h1{position:absolute;left:72px;top:178px;margin:0;font-size:96px;line-height:1.04;font-weight:800;letter-spacing:-2.5px;white-space:nowrap}
+h1 em{font-style:normal;color:#6fd6f7}
+.cmd{position:absolute;left:76px;bottom:72px;font:600 44px "SF Mono",Menlo,monospace;color:#e4ecf2;background:#13222f;border:2px solid #2b4a60;border-radius:16px;padding:18px 28px}
+.cmd b{color:#6fd6f7;font-weight:600}
+.berg{position:absolute;right:40px;top:40px;width:400px;height:550px}
+</style></head><body>
+<div class="mark"><svg viewBox="0 0 32 32"><path d="M16 4 L22 13 H10 Z" fill="#e4ecf2"/><path d="M7 16 H25 L21 28 H11 Z" fill="#6fd6f7" opacity=".85"/></svg>icelens</div>
+<h1>See the rest of<br>the <em>iceberg.</em></h1>
+<div class="cmd"><b>$</b> uvx icelens --demo</div>
+<svg class="berg" viewBox="0 0 400 550">
+  <path d="M200 40 L262 150 L138 150 Z" fill="#e4ecf2"/>
+  <line x1="0" y1="168" x2="400" y2="168" stroke="#6fd6f7" stroke-width="3" stroke-dasharray="10 8" opacity=".7"/>
+  <path d="M120 185 L280 185 L350 300 L318 420 L232 520 L150 505 L70 400 L52 290 Z" fill="#6fd6f7" opacity=".16" stroke="#6fd6f7" stroke-opacity=".5" stroke-width="2"/>
+  <g font-family="SF Mono,Menlo,monospace" font-size="30" font-weight="600" fill="#cfe6f2" text-anchor="middle">
+    <text x="200" y="128" fill="#0b141c" font-size="22">rows</text>
+    <text x="200" y="250">snapshots</text>
+    <text x="200" y="330">manifests</text>
+    <text x="200" y="410">data files</text>
+    <text x="200" y="478" font-size="24" fill="#8fb3c8">deletes</text>
+  </g>
+</svg>
+</body></html>

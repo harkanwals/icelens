@@ -840,7 +840,7 @@ def social(path: str, title: str, description: str) -> str:
         f'<meta property="og:image" content="{site}/{CARD}">',
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
-        '<meta property="og:image:alt" content="icelens in a terminal, showing a table\'s snapshots">',
+        '<meta property="og:image:alt" content="icelens: see the rest of the iceberg. Above the waterline, rows; below it, snapshots, manifests, data files and deletes. uvx icelens --demo">',
         '<meta name="twitter:card" content="summary_large_image">',
         f'<meta name="twitter:title" content="{title}">',
         f'<meta name="twitter:description" content="{description}">',
