@@ -29,8 +29,34 @@
     </div>
     <!--#walk-->
     <div class="actions after-demo">
-      <a class="button" href="#install">Install</a>
-      <a class="button ghost" href="docs/index.html">Read the guide</a>
+      <a class="button" href="docs/index.html">Read the guide</a>
+    </div>
+  </section>
+
+  <section class="section alt" id="install">
+    <div class="inner">
+      <span class="eyebrow">Install</span>
+      <h2>One command.</h2>
+      <p class="intro">It reads any Iceberg catalog PyIceberg can reach. Tested with Iceberg REST
+      (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs; see
+      <a href="docs/platforms.html">Platforms</a> for the rest.</p>
+      <div class="steps">
+        <div class="card">
+          <h3>Install</h3>
+          <p>With uv, or pipx.</p>
+<pre><code>uv tool install icelens
+pipx install icelens
+icelens --version</code></pre>
+        </div>
+        <div class="card">
+          <h3>Open a catalog, or start with none</h3>
+          <p>It finds the catalog this directory is configured for.</p>
+<pre><code>icelens                      # this directory's catalog
+icelens demo.orders          # straight onto a table
+icelens --uri http://localhost:8181/catalog --warehouse demo
+icelens --demo               # a local catalog worth opening</code></pre>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -162,34 +188,6 @@ data     3709505998256409031       1      30     2    0     4.5 KB  16b26532-…
       </ul>
     </div>
   </section>
-
-  <section class="section alt" id="install">
-    <div class="inner">
-      <span class="eyebrow">Install</span>
-      <h2>One command.</h2>
-      <p class="intro">It reads any Iceberg catalog PyIceberg can reach. Tested with Iceberg REST
-      (Lakekeeper, Apache Polaris), Google BigLake and local SQL catalogs; see
-      <a href="docs/platforms.html">Platforms</a> for the rest.</p>
-      <div class="steps">
-        <div class="card">
-          <h3>Install</h3>
-          <p>With uv, or pipx.</p>
-<pre><code>uv tool install icelens
-pipx install icelens
-icelens --version</code></pre>
-        </div>
-        <div class="card">
-          <h3>Open a catalog, or start with none</h3>
-          <p>It finds the catalog this directory is configured for.</p>
-<pre><code>icelens                      # this directory's catalog
-icelens demo.orders          # straight onto a table
-icelens --uri http://localhost:8181/catalog --warehouse demo
-icelens --demo               # a local catalog worth opening</code></pre>
-        </div>
-      </div>
-    </div>
-  </section>
-
 </main>
 <!--#footer-->
 </body>
