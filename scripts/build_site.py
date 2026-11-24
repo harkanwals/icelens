@@ -680,7 +680,9 @@ WALK_SCRIPT = """<script>
   });
   term.addEventListener("pointerleave", () => { if (W && (mouse || hover)) { mouse = hover = null; render(); } });
   term.addEventListener("pointerdown", async (e) => {
-    if (e.button !== 0) return;
+    // A pin is the tour's label, not a cell: clicking it to read its note must not take over
+    // the terminal, which would clear every pin. It takes the pointer only for that highlight.
+    if (e.button !== 0 || e.target.closest(".pin")) return;
     term.focus({ preventScroll: true });
     takeOver();
     await load();
