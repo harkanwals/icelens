@@ -111,3 +111,13 @@ def test_the_page_draws_what_the_rules_draw(site: str, walk_graph: dict[str, Any
             tw.same([want[done]], [page], [])
         except AssertionError as e:
             raise AssertionError(f"after {actions[max(0, n - 3):n]} (action {n}): {e}") from None
+
+
+def test_clicking_a_pin_keeps_the_tour_s_pins(site: str, tmp_path: Path) -> None:
+    # The pins sit over the terminal and take the pointer, for their highlight; a click on one
+    # once reached the terminal, which took over from the tour and cleared them all.
+    got = on_page(site, [["pin", 1], ["pin", 3]], tmp_path)
+    assert got["errors"] == []
+    pins = [shot["pins"] for shot in got["shots"]]
+    assert pins[0] > 0
+    assert pins == [pins[0]] * 3

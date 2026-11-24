@@ -48,7 +48,7 @@ await ev(`document.documentElement.dataset.theme = 'dark'; document.querySelecto
 const screen = `[...document.querySelectorAll('.walk pre')].find((p) => getComputedStyle(p).display !== 'none')`;
 const grab = () => ev(`(() => {
   const pre = ${screen};
-  return { theme: pre.classList.contains('t-light') ? 'light' : 'dark', rows: pre.innerHTML.split('\\n').map((line) => {
+  return { theme: pre.classList.contains('t-light') ? 'light' : 'dark', pins: document.querySelectorAll('.walk .pin').length, rows: pre.innerHTML.split('\\n').map((line) => {
     const d = document.createElement('div'); d.innerHTML = line;
     return [...d.childNodes].map((n) => [n.textContent, n.nodeType === 3 ? -1 : +n.className.slice(1)]);
   }) };
@@ -59,12 +59,15 @@ const mouse = async (type, x, y) => send("Input.dispatchMouseEvent", { type, x, 
 const VK = { ArrowDown: 40, ArrowUp: 38, ArrowLeft: 37, ArrowRight: 39, Enter: 13, Escape: 27, Tab: 9, PageDown: 34, PageUp: 33, Home: 36, End: 35 };
 
 // A click on the title row, which the app ignores, gives the terminal the keyboard; then the
-// mouse leaves it. Time stops for the page, so no toast expires between two actions.
+// mouse leaves it. Time stops for the page, so no toast expires between two actions. That click
+// takes over from the tour and clears its pins, so actions that click a pin go without it.
 let b = await box();
-await mouse("mouseMoved", b[0] + b[2] / 2, b[1] + 2);
-await mouse("mousePressed", b[0] + b[2] / 2, b[1] + 2);
-await mouse("mouseReleased", b[0] + b[2] / 2, b[1] + 2);
-await mouse("mouseMoved", 2, 2);
+if (actions[0]?.[0] !== "pin") {
+  await mouse("mouseMoved", b[0] + b[2] / 2, b[1] + 2);
+  await mouse("mousePressed", b[0] + b[2] / 2, b[1] + 2);
+  await mouse("mouseReleased", b[0] + b[2] / 2, b[1] + 2);
+  await mouse("mouseMoved", 2, 2);
+}
 for (let i = 0; i < 100 && !(await ev(`!!${screen}.textContent.trim()`)); i++) await sleep(100);
 await sleep(200);
 await send("Emulation.setVirtualTimePolicy", { policy: "pause" }, page);
@@ -76,6 +79,14 @@ for (const [kind, a, c] of actions) {
     await mouse("mouseMoved", x, y);
     await mouse("mousePressed", x, y);
     await mouse("mouseReleased", x, y);
+  } else if (kind === "pin") {
+    // A pin that is gone is not clicked, so the test says how many are left rather than crash.
+    const at = await ev(`(() => { const p = document.querySelectorAll('.walk .pin b')[${a - 1}]; if (!p) return null; const r = p.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+    if (at) {
+      await mouse("mouseMoved", ...at);
+      await mouse("mousePressed", ...at);
+      await mouse("mouseReleased", ...at);
+    }
   } else if (kind === "theme") {
     await ev(`document.documentElement.dataset.theme = ${JSON.stringify(a)}`);
   } else {
